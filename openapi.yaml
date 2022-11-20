@@ -7,7 +7,7 @@ info:
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
-  version: 0.0.1
+  version: 0.0.3
 externalDocs:
   description: https://mo6273.schule.hessen.de
   url: https://mo6273.schule.hessen.de
@@ -16,15 +16,13 @@ servers:
     {
       url: 'http://localhost:5000/auth/',
       description: 'Local server'
-    },
-    {
-      url: 'https://petstore3.swagger.io/api/v3',
-      description: 'Testing server'
     }
   ]
 tags:
   - name: user
     description: Operations about user
+  - name: roles
+    description: Operations about roles (autorization)
 paths:
   /user/login:
     post:
@@ -59,6 +57,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InvalidToken'
+  
+  /user/roles/{token}:
+    get:
+      tags:
+        - roles
+      summary: Get roleIDs
+      operationId: getRoleIDs
+      parameters: 
+      - name: token
+        in: path
+        description: Token which is associated with roleIDs
+        required: true
+        schema:
+          $ref: '#/components/schemas/Token'
+      responses:
+        '200':
+          description: roleIDs successfully received
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidRoleIDs'
+        '403':
+          description: Invalid token supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidRoleIDs'
+  
   /user/{token}:
     delete:
       tags:
@@ -72,8 +98,7 @@ paths:
         description: Token that has to be deleted
         required: true
         schema:
-          type: string
-          format: UUID_SHORT
+          $ref: '#/components/schemas/Token'
       responses:
         '200':
           description: Logout sucessful
@@ -81,10 +106,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InvalidToken'
-  
-  
+
+
+
 components:
   schemas:
+    Token:
+      type: string
+      example: 123456
     User:
       type: object
       properties:
@@ -106,7 +135,19 @@ components:
         token:
           type: string
           example: -1
-    
+    ValidRoleIDs:
+      type: object
+      properties:
+        roleIDs:
+          type: string
+          example: [1, 2]
+    InvalidRoleIDs:
+      type: object
+      properties:
+        roleIDs:
+          type: string
+          example: -1
+  
 
   requestBodies:
     UserArray:
@@ -117,3 +158,7 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/User'
+              
+    
+    
+    

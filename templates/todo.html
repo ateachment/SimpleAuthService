@@ -1,0 +1,29 @@
+{% extends 'dashboard.html' %}
+
+{% block h1 %}
+<h1>todo</h1>
+<main>
+    <article>
+        <header>
+            <h2>Quite tricky</h2>
+        </header>
+
+<p>Still quite a lot to do to finish this website, but it's enough for a short demo.</p>
+
+<p>The disadvantages of this conventional approach are:
+    <ol><li>to make the actually stateless HTTP protocol understand the states logged in and logged out, quite a lot of work has to be done. For example, every request here involves a database query to see if the current session number is still valid and what roles the user holds. 
+        So this web application is altogether quite 'chatty',</li>
+        <li>the session number can also be stolen.</li>
+    </ol>
+</p>
+    </article>
+</main>
+{% endblock %}
+
+
+
+{% block links %}
+    <p>
+        <a href="dashboard.html">Dashboard</a>
+    </p>
+{% endblock %}

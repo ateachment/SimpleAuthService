@@ -1,0 +1,28 @@
+{% extends 'index.html' %}
+{% block body %}
+  <div class="dashboard">
+    {% block h1 %}
+    <h1>Dashboard</h1>
+    {% endblock %}
+    Logged in with roles:
+    <ul>
+      {% for role in roles %}
+      <li>{{ role }}</li>
+      {% endfor %}
+    </ul>
+    {% block links %}
+    <p>
+      <a href="/pages/todo.html">todo</a>
+    </p>
+    {% endblock %}
+    <footer>
+      <form id="myForm" action = "http://localhost:5000/logout" method = "post">
+        <input type="submit" name="login" class="login" value="Logout">
+      </form>
+      <div id="progress">
+        <div id="bar"></div>
+      </div>
+    </footer>
+  </div>
+  <script src="/static/js/dashboard.js"></script>
+{% endblock %}

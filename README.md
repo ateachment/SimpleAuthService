@@ -6,4 +6,5 @@ Includes:
 <li>simple UI</li>
 <li>pytest file</li>
 <li>OpenAPI description file</li>
+<li>MySql init file</li>
 </ul>

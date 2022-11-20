@@ -30,6 +30,19 @@ def test_login_form_success():
     token = json.loads(response.data.decode('utf-8')).get("token")
     assert token == '123456'
 
+def test_autorize_success():
+    response = app.test_client().get('/auth/user/roles/123456')
+    assert response.status_code == 200
+    roleIDs = json.loads(response.data.decode('utf-8')).get("roleIDs")
+    assert roleIDs == [1, 2]
+
+def test_autorize_fail():
+    response = app.test_client().get('/auth/user/roles/000')
+    assert response.status_code == 403
+    roleIDs = json.loads(response.data.decode('utf-8')).get("roleIDs")
+    assert roleIDs == '-1'
+
+
 def test_logout():
     response = app.test_client().delete('/auth/user/123456')
     assert response.status_code == 200

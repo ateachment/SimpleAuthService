@@ -37,6 +37,6 @@ CREATE TABLE tblRoleUser (
   roleID int(11) NOT NULL
 );
 
-INSERT INTO tblRoleUser (userID, roleID) VALUES
-(1, 1);
+INSERT INTO tblRoleUser (userID, roleID) VALUES (1, 1);  -- Administrator
+INSERT INTO tblRoleUser (userID, roleID) VALUES (1, 2);  -- Viewer
 
