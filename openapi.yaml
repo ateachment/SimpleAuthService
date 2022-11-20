@@ -1,0 +1,119 @@
+openapi: 3.0.3
+info:
+  title: Simple Auth Service
+  description: |-
+    Simple Authentification Service  
+    - [The Simple Authentification Service repository](https://github.com/ateachment/to-do)
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 0.0.1
+externalDocs:
+  description: https://mo6273.schule.hessen.de
+  url: https://mo6273.schule.hessen.de
+servers:
+  [
+    {
+      url: 'http://localhost:5000/auth/',
+      description: 'Local server'
+    },
+    {
+      url: 'https://petstore3.swagger.io/api/v3',
+      description: 'Testing server'
+    }
+  ]
+tags:
+  - name: user
+    description: Operations about user
+paths:
+  /user/login:
+    post:
+      tags:
+        - user
+      summary: Logs user into the system
+      description: ''
+      operationId: loginUser
+      requestBody:
+        description: Logs user into the system
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      responses:
+        '200':
+          description: Login sucessful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidToken'
+            application/x-www-form-urlencoded:
+              schema:
+                $ref: '#/components/schemas/ValidToken'
+        '403':
+          description: Invalid username/password supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidToken'
+  /user/{token}:
+    delete:    # https://stackoverflow.com/questions/40245154/http-restful-webservice-logout-which-is-correct-or-better-practice-post-or-de
+      tags:
+        - user
+      summary: Logs out current logged in user
+      description: ''
+      operationId: logoutUser
+      parameters: 
+      - name: token
+        in: path
+        description: Token that has to be deleted
+        required: true
+        schema:
+          type: string
+          format: UUID_SHORT
+      responses:
+        '200':
+          description: Logout sucessful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidToken'
+  
+  
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+          example: testUser
+        password:
+          type: string
+          example: testPwd
+    ValidToken:
+      type: object
+      properties:
+        token:
+          type: string
+          example: 123456
+    InvalidToken:
+      type: object
+      properties:
+        token:
+          type: string
+          example: -1
+    
+
+  requestBodies:
+    UserArray:
+      description: List of user object
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/User'
