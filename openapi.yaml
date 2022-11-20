@@ -60,7 +60,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/InvalidToken'
   /user/{token}:
-    delete:    # https://stackoverflow.com/questions/40245154/http-restful-webservice-logout-which-is-correct-or-better-practice-post-or-de
+    delete:
       tags:
         - user
       summary: Logs out current logged in user
