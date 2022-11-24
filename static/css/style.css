@@ -1,7 +1,16 @@
-@import url(https://fonts.googleapis.com/css?family=Roboto:400,100);
+/* roboto-flex-regular - latin */
+@font-face {
+  font-family: 'Roboto Flex';
+  font-weight: 100 1000;
+  src: local('Roboto Flex'),
+      url('/static/fonts/roboto-flex.woff2') format(woff2) tech(variations);  
+     
+}
+
 
 body {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Roboto Flex', sans-serif;
+  font-weight: 400;
   background: #cccccc;
 }
 
@@ -21,7 +30,7 @@ body {
 h1 {
   font-weight: 100;
   text-align: center;
-  font-size: 2.3em;
+  font-size: 3.4em;
 }
 
 .login-card input[type=submit] {
@@ -53,19 +62,14 @@ h1 {
 
 .login {
   text-align: center;
-  font-size: 14px;
-  font-family: 'Arial', sans-serif;
   font-weight: 700;
   height: 36px;
   padding: 0 8px;
-}
-
-.login {
   border: 0px;
   color: #fff;
   text-shadow: 0 1px rgba(0,0,0,0.1); 
   background-color: #4d90fe;
- }
+}
 
 .login:hover {
   border: 0px;

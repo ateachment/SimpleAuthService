@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, make_response
+from flask import Flask, request, render_template, make_response
 import json
 import hashlib
 import secrets
@@ -6,7 +6,7 @@ import db
 import settings
 # make cross-origin AJAX possible because of using swagger editor
 # https://flask-cors.readthedocs.io/en/latest/#using-json-with-cors
-from flask_cors import CORS, cross_origin  
+from flask_cors import CORS
 
 app = Flask(__name__)
 
