@@ -31,9 +31,4 @@ def test_login_form_success():
     assert token == '123456'
 
 def test_logout():
-    response = app.test_client().delete('/auth/user/123456')
-    assert response.status_code == 200
-    token = json.loads(response.data.decode('utf-8')).get("token")
-    assert token == '-1'
-
-
+    todo

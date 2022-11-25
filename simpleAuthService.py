@@ -3,7 +3,7 @@ import json
 
 # make cross-origin AJAX possible because of using swagger editor
 # https://flask-cors.readthedocs.io/en/latest/#using-json-with-cors
-from flask_cors import CORS 
+from flask_cors import CORS, cross_origin  
  
 app = Flask(__name__)
 CORS(app)  # make cross-origin AJAX possible
@@ -27,9 +27,9 @@ def loginUser():
         return "{ \"token\": \"-1\" }", 403            # Forbidden
 
 
-@app.route('/auth/user/<token>', methods=['DELETE'])
-def logoutUser(token):
-    return "{ \"token\": \"-1\" }" # 200 logout sucessful
+Logout todo
+
+
 
 
 if __name__ == '__main__':
