@@ -58,32 +58,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/InvalidToken'
   
-  /user/roles/{token}:
-    get:
-      tags:
-        - roles
-      summary: Get roleIDs
-      operationId: getRoleIDs
-      parameters: 
-      - name: token
-        in: path
-        description: Token which is associated with roleIDs
-        required: true
-        schema:
-          $ref: '#/components/schemas/Token'
-      responses:
-        '200':
-          description: roleIDs successfully received
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidRoleIDs'
-        '403':
-          description: Invalid token supplied
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InvalidRoleIDs'
   
   /user/{token}:
     delete:
@@ -113,7 +87,7 @@ components:
   schemas:
     Token:
       type: string
-      example: 123456
+      example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NzA0NDE4MDMsInJvbGVJRHMiOlsxLDJdfQ.967Mucl7Xrlm_bf33Sh0sq0EzRToZkzsWy5QdvDQU0_JCIkgf1TuC0muKG-ThxihJ-ewMkSvh3u94yDs-RWDMCVavPfLbmdLRJCu6lChI8gVcdR__U61zRBP6cszSFPFK8pJTqs7oe_t6z-HzDMEyxNBwF4bmPuEqXySVETg3lqn8QOb5DNa7056EPWvjUfuKUsPIKfvr_LESMzFXZrnSyNtzQPrSeFYTeynJdl-q1_l9JlqOTiQvqmWbUjyoj8swdJ7brKLuVUzL3yXLV7vBRWhUDLUHzyYlySnZxPrDS_oUpUF8MDOJ9z-WV5d-utDocPmMhMrwP05vXqTYmBGdg
     User:
       type: object
       properties:
@@ -128,7 +102,7 @@ components:
       properties:
         token:
           type: string
-          example: 123456
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NzA0NDE4MDMsInJvbGVJRHMiOlsxLDJdfQ.967Mucl7Xrlm_bf33Sh0sq0EzRToZkzsWy5QdvDQU0_JCIkgf1TuC0muKG-ThxihJ-ewMkSvh3u94yDs-RWDMCVavPfLbmdLRJCu6lChI8gVcdR__U61zRBP6cszSFPFK8pJTqs7oe_t6z-HzDMEyxNBwF4bmPuEqXySVETg3lqn8QOb5DNa7056EPWvjUfuKUsPIKfvr_LESMzFXZrnSyNtzQPrSeFYTeynJdl-q1_l9JlqOTiQvqmWbUjyoj8swdJ7brKLuVUzL3yXLV7vBRWhUDLUHzyYlySnZxPrDS_oUpUF8MDOJ9z-WV5d-utDocPmMhMrwP05vXqTYmBGdg
     InvalidToken:
       type: object
       properties:

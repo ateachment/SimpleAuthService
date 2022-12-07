@@ -1,7 +1,11 @@
 from flask import Flask, request, render_template, make_response
-import json
+import json 
 import hashlib
-import secrets
+import jwt 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
+import datetime as dt
+from datetime import timezone, timedelta
 import db
 import settings
 # make cross-origin AJAX possible because of using swagger editor
@@ -92,22 +96,17 @@ def logout():
 
 
 
-
-
 #################################################################
 # auth service
 
-def generateToken():
-    if settings.DEBUG_MODE:
-        return "123456"                     # testing environment
-    else:
-        return secrets.token_urlsafe(64)    # production
+private_key = serialization.load_pem_private_key(settings.PRIVATE_KEY, password=settings.PASSWORD, backend=default_backend())
+
+jwt_blacklist = {}
 
 @app.route('/auth/user/login', methods=['POST'])
 def loginUser():
     content_type = request.headers.get('Content-Type')
     if content_type == 'application/json':
-        print(request)
         username = request.json['username']
         password = request.json['password']
     elif (content_type == 'application/x-www-form-urlencoded'):     # regular html form data
@@ -118,49 +117,25 @@ def loginUser():
     
     db1 = db.Db()
     hashedPW = hashlib.sha512(str(password).encode('utf-8')).hexdigest()
-    query = "SELECT userId FROM tblUser WHERE username='%s' AND pwd='%s'" %(username, hashedPW)
+    query = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE username='%s' AND pwd='%s'" %(username, hashedPW)
     result = db1.execute(query)
+    del db1                                                         # close db connection                                           
     if(result):
-        userId = result[0][0]                                       # first row, first element
-        token = generateToken()
-        query = "UPDATE tblUser SET token = '%s' WHERE userID=%d" %(token, userId)
-        result = db1.execute(query)
-        db1.commit()                                                # actually execute
+        roleIDs = []
+        for row in result:
+            roleIDs.append(row[0])         
+        expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=10) # Expiration 10 seconds in the future     
+        token = jwt.encode({"exp": expiry, "roleIDs": roleIDs }, private_key, algorithm="RS256")
+        jwt_blacklist.update({ token:expiry })
         return json.dumps({ "token": token }), 200                  # 200 OK
     else:
         return json.dumps({ "token": "-1" }), 403                   # 403 forbidden
-    del db1                                                         # close db connection
-                                                    
-                                                    
+                            
 @app.route('/auth/user/<token>', methods=['DELETE'])
 def logoutUser(token):
-    db1 = db.Db()
-    query = "UPDATE tblUser SET token = '-1' WHERE token=%s" %(token)
-    result = db1.execute(query)
-    db1.commit()      
-    del db1       
+    if jwt_blacklist.get(token):
+        jwt_blacklist.pop(token)
     return "{ \"token\": \"-1\" }", 200                             # 200 logout sucessful
-
-@app.route('/auth/user/roles/<token>', methods=['GET'])
-def autorize(token):
-    db1 = db.Db()
-    # Update timestamp or make token invalid
-    query = "UPDATE tblUser SET tokenExpiry = CURRENT_TIMESTAMP WHERE tokenExpiry >= (NOW() - INTERVAL 10 SECOND) AND token <> '-1' AND token=%s" %(token)
-    result = db1.execute(query)
-    query = "UPDATE tblUser SET token = '-1' WHERE tokenExpiry < (NOW() - INTERVAL 10 SECOND) AND token <> '-1' AND token=%s" %(token)
-    result = db1.execute(query)  
-    db1.commit()
-    query = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE token <> '-1' AND token = %s" %(token)
-    result = db1.execute(query)        # i.e. [(1,), (2,)] or []
-    if(result):                        # role(s) available
-        roleIDs = []
-        for row in result:
-            roleIDs.append(row[0])    
-        print("autorize=" + str(roleIDs))                                                     
-        return json.dumps({ "roleIDs": roleIDs }), 200
-    else:
-        return json.dumps({ "roleIDs": "-1" }), 403     # forbidden
-    del db1       
 
 if __name__ == '__main__':
     app.run()

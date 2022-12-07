@@ -23,14 +23,12 @@ CREATE TABLE tblUser (
   userID int(11) NOT NULL AUTO_INCREMENT,
   username varchar(50) DEFAULT NULL,
   pwd varchar(128) DEFAULT NULL,
-  token bigint(64) NOT NULL,
-  tokenExpiry timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY(userID)
 );
 
 -- password 'testPwd' hashed with sha512
-INSERT INTO tblUser (userID, username, pwd, token) VALUES
-(1, 'testUser', 'd803b4b4121d445b220d94dabc43d5f9f625a28e15089ec0edd4c3731ce3abf3bea92f542a99455625833e379d3d6165d44a9a898e9adb8f5f1cdb3381a44ff2', 123456);
+INSERT INTO tblUser (userID, username, pwd) VALUES
+(1, 'testUser', 'd803b4b4121d445b220d94dabc43d5f9f625a28e15089ec0edd4c3731ce3abf3bea92f542a99455625833e379d3d6165d44a9a898e9adb8f5f1cdb3381a44ff2');
                  
 CREATE TABLE tblRoleUser (
   userID int(11) NOT NULL,

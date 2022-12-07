@@ -1,5 +1,5 @@
 # SimpleAuthService
-<p>Development of a simple token-based web service with Flask for teaching purposes</p>
+<p>Development of a JWT-based web service with Flask for teaching purposes</p>
 
 Includes:
 <ul>
