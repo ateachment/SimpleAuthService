@@ -20,7 +20,6 @@ def test_login_json_sucess():
     assert response.status_code == 200 
 
     encoded_token = json.loads(response.data.decode('utf-8')).get("token")
-    
     decoded_token = decodeJWT(encoded_token=encoded_token)
 
     roleIDs = decoded_token.get("roleIDs")

@@ -21,6 +21,11 @@ if settings.DEBUG_MODE:
 #################################################################
 # user interface
 
+def decodeJWT(encoded_token):
+    public_key = serialization.load_pem_public_key(settings.PUBLIC_KEY, backend=default_backend())
+    decoded_token = jwt.decode(encoded_token, public_key, algorithms=["RS256"])
+    return decoded_token
+
 def roles(roleIDs):
     roles = []
     for roleID in roleIDs:
@@ -41,58 +46,68 @@ def index():
     elif token == None:
         return render_template('login.html', message = "Please login.")
     else:
-        dictResponse = json.loads(autorize(token)[0])
-        roleIDs = dictResponse['roleIDs']
-        if roleIDs == "-1":
+        try:
+            decoded_token = decodeJWT(encoded_token=token)
+            roleIDs = decoded_token.get("roleIDs")
+            return make_response(render_template('dashboard.html', roles = roles(roleIDs)))
+        except jwt.ExpiredSignatureError:
             return render_template('login.html', message = "Your session has expired. Please login again.")
-        else:
-            resp = make_response(render_template('dashboard.html', roles = roles(roleIDs)))
-        return resp
+        except:
+            return render_template('login.html', message = "Please login.")
 
 @app.route('/dashboard', methods=['POST', 'GET'])   
 def dashboard():
     if request.method == 'POST':                    # called by form data of login.html
-        dictResponse = json.loads(loginUser()[0])   # loginUser returns i.e. ('{"token": "123456"}', 200)
+        dictResponse = json.loads(loginUser()[0])   # loginUser returns i.e. ('{"token": jwt}', 200)
         token = dictResponse['token']
         if token == '-1':                           # authentification failed -> login form 
             return render_template('login.html', message = "Wrong username/password.")                     
         else:                                       # ok -> load dashboard
-            dictResponse = json.loads(autorize(token)[0])
-            roleIDs = dictResponse['roleIDs']
-            resp = make_response(render_template('dashboard.html', roles = roles(roleIDs)))
-            resp.set_cookie('token',token)
-        return resp
+            try:
+                decoded_token = decodeJWT(encoded_token=token)
+                roleIDs = decoded_token.get("roleIDs")
+                resp = make_response(render_template('dashboard.html', roles = roles(roleIDs)))
+                resp.set_cookie('token',token)
+                return resp
+            except jwt.ExpiredSignatureError:
+                return render_template('login.html', message = "Your session has expired. Please login again.")
+            except:
+                return render_template('login.html', message = "Please login.")
     if request.method == 'GET':               # links or redirected by login.html (already logged on)
         token = request.cookies.get('token')
-        dictResponse = json.loads(autorize(token)[0]) # AUTORIZATION
-        roleIDs = dictResponse['roleIDs']
-        if roleIDs == "-1":
+        try:
+            decoded_token = decodeJWT(encoded_token=token)
+            roleIDs = decoded_token.get("roleIDs")
+            return make_response(render_template('dashboard.html', roles = roles(roleIDs)))
+        except jwt.ExpiredSignatureError:
             return render_template('login.html', message = "Your session has expired. Please login again.")
-        else:
-            resp = make_response(render_template('dashboard.html', roles = roles(roleIDs)))
-        return resp
+        except:
+            return render_template('login.html', message = "Please login.")
         
 @app.route('/pages/<page>', methods=['GET'])   
 def load(page):
     token = request.cookies.get('token')
-    dictResponse = json.loads(autorize(token)[0]) # AUTORIZATION
-    roleIDs = dictResponse['roleIDs']
-    if roleIDs == "-1":
+    try:
+        decoded_token = decodeJWT(encoded_token=token)
+        roleIDs = decoded_token.get("roleIDs")
+        return make_response(render_template(page, roles = roles(roleIDs)))
+    except jwt.ExpiredSignatureError:
         return render_template('login.html', message = "Your session has expired. Please login again.")
-    else:
-        resp = make_response(render_template(page, roles = roles(roleIDs)))
-    return resp
-
+    except:
+        return render_template('login.html', message = "Please login.")
 
 @app.route('/logout', methods=['POST', 'GET'])   
 def logout():
     token = request.cookies.get('token')
-    dictResponse = json.loads(logoutUser(token)[0])  # logoutUser returns ('{"token": "-1"}', 200)
-    token = dictResponse['token']
-    if token == '-1':                           # logout sucessful -> login form 
-        resp = make_response(render_template('login.html', message="You have logged out."))
-        resp.set_cookie('token','-1')
-        return resp                     
+    try:
+        decoded_token = decodeJWT(encoded_token=token)
+    except:
+        pass
+    l
+    resp = make_response(render_template('login.html', message="You have logged out."))
+    resp.set_cookie('token','-1')
+    return resp         
+
 
 
 
