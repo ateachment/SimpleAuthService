@@ -152,21 +152,26 @@ def validate_and_update_token(token):
 def logoutUser(token):
     try:
         decodeJWT(encoded_token=token)
-        expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=10) # Expiration 10 seconds in the future     
-        jwt_blockedlist.update({ token:expiry })                    # logged out -> token in blockedlist
+        expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=10)    # Expiration 10 seconds in the future     
+        jwt_blockedlist.update({ token : str(expiry) })                         # logged out -> token in blockedlist
     except:
         pass
     return "{ \"token\": \"-1\" }", 200                             # 200 logout sucessful
 
 @app.route('/auth/cleanUp', methods=['DELETE'])                     # Webhook: clean up blocked_token_lists
 def cleanUp_blocked_token_list():
+    print(jwt_blockedlist)
     now = dt.datetime.now(tz=timezone.utc) 
-    cnt = 0
-    for jwt in jwt_blockedlist:
-        if jwt.value > now:
-            jwt_blockedlist.pop(jwt)
-            cnt += 1
-    return "{ \"cleanedUp\": cnt }", 200 
+    print(now)
+    jwts_to_clear = []
+    for key in jwt_blockedlist:
+        if dt.datetime.fromisoformat(jwt_blockedlist[key]) < now:
+            jwts_to_clear.append(key)
+    for key in jwts_to_clear:
+        jwt_blockedlist.pop(key)
+    print(jwt_blockedlist)
+    
+    return json.dumps({ "cleanedUp": len(jwts_to_clear) }), 200 
 
 if __name__ == '__main__':
     app.run()
