@@ -40,8 +40,9 @@ def decodeJWT(encoded_token):
 def standard_response(page, token):
     decoded_token = decodeJWT(encoded_token=token)
     roleIDs = decoded_token.get("roleIDs")
+    print(page)
     resp = make_response(render_template(page, roles = roles(roleIDs)))
-    resp.set_cookie('token', token, httponly=True)                          # cookie can not be read by JavaScript (safer)
+    resp.set_cookie('token', token, httponly=True, secure=True)             # cookie can not be read by JavaScript (safer)
     return resp
 
 def standard_get_response(page):
@@ -90,7 +91,7 @@ def logout():
     except:
         pass
     resp = make_response(render_template('login.html', message="You have logged out."))
-    resp.set_cookie('token','-1')
+    resp.set_cookie('token','-1', httponly=True, secure=True)
     return resp         
 
 

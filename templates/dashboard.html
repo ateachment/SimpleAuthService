@@ -1,19 +1,19 @@
 {% extends 'index.html' %}
 {% block body %}
-  <div class="dashboard">
-    {% block h1 %}
-    <h1>Dashboard</h1>
-    {% endblock %}
-    Logged in with roles:
-    <ul>
-      {% for role in roles %}
-      <li>{{ role }}</li>
-      {% endfor %}
-    </ul>
-    {% block links %}
-    <p>
-      <a href="/pages/todo.html">todo</a>
-    </p>
+  <div class="page">
+    {% block content %}
+    <div  id="content">
+      <h1>Dashboard</h1>
+      Logged in with roles:
+      <ul>
+        {% for role in roles %}
+        <li>{{ role }}</li>
+        {% endfor %}
+      </ul>
+      <p>
+        <a href="/pages/todo.html">todo</a>
+      </p>
+    </div>
     {% endblock %}
     <footer>
       <form id="myForm" action = "http://localhost:5000/logout" method = "post">

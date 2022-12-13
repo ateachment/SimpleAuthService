@@ -3,10 +3,9 @@
   font-family: 'Roboto Flex';
   font-weight: 100 1000;
   src: local('Roboto Flex'),
-      url('/static/fonts/roboto-flex.woff2') format(woff2) tech(variations);  
+      url('/static/fonts/roboto-flex.woff2') format(woff2) tech(variations); 
      
 }
-
 
 body {
   font-family: 'Roboto Flex', sans-serif;
@@ -14,17 +13,36 @@ body {
   background: #cccccc;
 }
 
-.login-card, .dashboard{
+@keyframes fadeIn{
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes fadeOut{
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+
+}
+
+.login-card, .page{
   padding: 40px;
-  width: 274px;
+  width: 15%;
   background-color: #F7F7F7;
   margin: 0 auto 10px;
   border-radius: 2px;
   box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.3);
   overflow: hidden;
+  animation: fadeIn 0.5s;
 }
-.dashboard {
+.page {
   width: 80%;
+}
+
+.hide {
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+.show {
+  opacity: 1;
 }
 
 h1 {
@@ -50,7 +68,6 @@ h1 {
   border-top: 1px solid #c0c0c0;
   padding: 0 8px;
   box-sizing: border-box;
-  -moz-box-sizing: border-box;
 }
 
 .login-card input[type=text]:hover, input[type=password]:hover {
