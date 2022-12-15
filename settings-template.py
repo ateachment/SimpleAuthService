@@ -2,14 +2,14 @@
 # template for settings.py
 # CAUTION: exclude settings.py from versioning in .gitignore
 
-host = "YourHostname"
-user = "YourUsername"
-passwd = "YourPassword"
-db = "YourDatabase"
+HOST = "YourHostname"
+USER = "YourUsername"
+PASSWD = "YourPassword"
+DB = "YourDatabase"
 
 # keys
-PASSWORD = "YourPassword"
-PRIVATE_KEY = """YourPrivateKey"""
-PUBLIC_KEY = """YourPublicKEY"""
+PASSWORD = b"YourPassword"
+PRIVATE_KEY = b"""YourPrivateKey"""
+PUBLIC_KEY = b"""YourPublicKEY"""
 
 DEBUG_MODE = True     # disable DEBUG_MODE in productive environment

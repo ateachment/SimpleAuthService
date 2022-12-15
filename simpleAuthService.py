@@ -86,12 +86,9 @@ def load(page):
 @app.route('/logout', methods=['POST', 'GET'])   
 def logout():
     token = request.cookies.get('token')
-    try:
-        decoded_token = decodeJWT(encoded_token=token)
-    except:
-        pass
+    token = json.loads(logoutUser(token)[0])['token']
     resp = make_response(render_template('login.html', message="You have logged out."))
-    resp.set_cookie('token','-1', httponly=True, secure=True)
+    resp.set_cookie('token', token, httponly=True, secure=True)
     return resp         
 
 
