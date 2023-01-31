@@ -48,7 +48,7 @@ def index():
 @app.route('/dashboard', methods=['POST', 'GET'])   
 def dashboard():
     if request.method == 'POST':                    # called by form data of login.html
-        dictResponse = json.loads(loginUser())      # loginUser returns i.e. ('{"token": "123456"}')
+        dictResponse = json.loads(loginUser()[0])   # loginUser returns i.e. ('{"token": "123456"}', 200)
         token = dictResponse['token']
         if token == '-1':                           # authentification failed -> login form 
             return render_template('login.html', message = "Wrong username/password.")                     
@@ -129,7 +129,7 @@ def loginUser():
                     query = "UPDATE tblUser SET token = '%s' WHERE userID=%d" %(token, userId)
                     result = db1.execute(query)
                     db1.commit()                                    # actually execute
-                    return json.dumps({ "token": token })           # 200 OK
+                    return json.dumps({ "token": token }), 200      # 200 OK
             except:
                 pass
         return json.dumps({ "token": "-1" }), 403                   # 403 forbidden - wrong password
