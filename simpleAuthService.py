@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, make_response
 import json 
-import hashlib
+from argon2 import PasswordHasher
 import jwt 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
@@ -114,19 +114,31 @@ def loginUser():
         return 'Content-Type not supported: ' + content_type, 400   # Bad request
     
     db1 = db.Db()
-    hashedPW = hashlib.sha512(str(password).encode('utf-8')).hexdigest()
-    query = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE username='%s' AND pwd='%s'" %(username, hashedPW)
+    ph = PasswordHasher()
+    hashedPW = ph.hash(str(password))
+    query = "SELECT userId, pwd FROM tblUser WHERE username='%s'" %(username)
     result = db1.execute(query)
-    del db1                                                         # close db connection                                           
     if(result):
-        roleIDs = []
-        for row in result:
-            roleIDs.append(row[0])         
-        expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=10) # Expiration 10 seconds in the future     
-        token = jwt.encode({"exp": expiry, "roleIDs": roleIDs }, private_key, algorithm="RS256")
-        return json.dumps({ "token": token }), 200                  # 200 OK
+        for row in result:                                          # more than one user with this username possible
+            try:                                                    # verify hashed password fail -> throws exception
+                if ph.verify(row[1], password) == True:             # check hashed password
+                    userId = row[0]                                 # get userId and then roleIDs
+                    query2 = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE tblUser.userID=" + str(userId)
+                    result2 = db1.execute(query2)
+                    del db1                                         # close db connection
+                    if(result2):
+                        roleIDs = []
+                        for row2 in result2:
+                            roleIDs.append(row2[0])         
+                        expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=10) # Expiration 10 seconds in the future     
+                        token = jwt.encode({"exp": expiry, "roleIDs": roleIDs }, private_key, algorithm="RS256") 
+                        return json.dumps({ "token": token }), 200  # 200 OK
+            except:
+                pass
+        return json.dumps({ "token": "-1" }), 403                   # 403 forbidden - wrong password
     else:
-        return json.dumps({ "token": "-1" }), 403                   # 403 forbidden
+        return json.dumps({ "token": "-1" }), 403                   # 403 forbidden - no user with this username
+   
            
 @app.route('/auth/user/<token>', methods=['PUT'])
 def validate_and_update_token(token):
