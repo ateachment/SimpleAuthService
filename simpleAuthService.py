@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, make_response
 import json
-import hashlib
+from argon2 import PasswordHasher
 import secrets
 import db
 import settings
@@ -48,7 +48,7 @@ def index():
 @app.route('/dashboard', methods=['POST', 'GET'])   
 def dashboard():
     if request.method == 'POST':                    # called by form data of login.html
-        dictResponse = json.loads(loginUser()[0])   # loginUser returns i.e. ('{"token": "123456"}', 200)
+        dictResponse = json.loads(loginUser())      # loginUser returns i.e. ('{"token": "123456"}')
         token = dictResponse['token']
         if token == '-1':                           # authentification failed -> login form 
             return render_template('login.html', message = "Wrong username/password.")                     
@@ -107,7 +107,6 @@ def generateToken():
 def loginUser():
     content_type = request.headers.get('Content-Type')
     if content_type == 'application/json':
-        print(request)
         username = request.json['username']
         password = request.json['password']
     elif (content_type == 'application/x-www-form-urlencoded'):     # regular html form data
@@ -117,18 +116,25 @@ def loginUser():
         return 'Content-Type not supported: ' + content_type, 400   # Bad request
     
     db1 = db.Db()
-    hashedPW = hashlib.sha512(str(password).encode('utf-8')).hexdigest()
-    query = "SELECT userId FROM tblUser WHERE username='%s' AND pwd='%s'" %(username, hashedPW)
+    ph = PasswordHasher()
+    hashedPW = ph.hash(str(password))
+    query = "SELECT userId, pwd FROM tblUser WHERE username='%s'" %(username)
     result = db1.execute(query)
     if(result):
-        userId = result[0][0]                                       # first row, first element
-        token = generateToken()
-        query = "UPDATE tblUser SET token = '%s' WHERE userID=%d" %(token, userId)
-        result = db1.execute(query)
-        db1.commit()                                                # actually execute
-        return json.dumps({ "token": token }), 200                  # 200 OK
+        for row in result:                                          # more than one user with this username possible
+            try:                                                    # verify hashed password fail -> throws exception
+                if ph.verify(row[1], password) == True:             # check hashed password
+                    userId = row[0]                                 
+                    token = generateToken()
+                    query = "UPDATE tblUser SET token = '%s' WHERE userID=%d" %(token, userId)
+                    result = db1.execute(query)
+                    db1.commit()                                    # actually execute
+                    return json.dumps({ "token": token })           # 200 OK
+            except:
+                pass
+        return json.dumps({ "token": "-1" }), 403                   # 403 forbidden - wrong password
     else:
-        return json.dumps({ "token": "-1" }), 403                   # 403 forbidden
+        return json.dumps({ "token": "-1" }), 403                   # 403 forbidden - no user with this username
     del db1                                                         # close db connection
                                                     
                                                     
@@ -155,8 +161,7 @@ def autorize(token):
     if(result):                        # role(s) available
         roleIDs = []
         for row in result:
-            roleIDs.append(row[0])    
-        print("autorize=" + str(roleIDs))                                                     
+            roleIDs.append(row[0])                                          
         return json.dumps({ "roleIDs": roleIDs }), 200
     else:
         return json.dumps({ "roleIDs": "-1" }), 403     # forbidden
