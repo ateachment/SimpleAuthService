@@ -28,7 +28,7 @@ CREATE TABLE tblUser (
   PRIMARY KEY(userID)
 );
 
--- password 'testPwd' hashed with sha512
+-- password 'testPwd' hashed with argon2
 INSERT INTO tblUser (userID, username, pwd, token) VALUES
 (1, 'testUser', '$argon2id$v=19$m=65536,t=3,p=4$AO8XsjZEt2aaGL7Xh/4DeQ$vTplDqP6zL3Kk8uCUu9rPV1+dT3hSmo8Si8DDH3nhQU', 123456);
                  
