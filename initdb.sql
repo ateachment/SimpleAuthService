@@ -30,7 +30,7 @@ CREATE TABLE tblUser (
 
 -- password 'testPwd' hashed with sha512
 INSERT INTO tblUser (userID, username, pwd, token) VALUES
-(1, 'testUser', 'd803b4b4121d445b220d94dabc43d5f9f625a28e15089ec0edd4c3731ce3abf3bea92f542a99455625833e379d3d6165d44a9a898e9adb8f5f1cdb3381a44ff2', 123456);
+(1, 'testUser', '$argon2id$v=19$m=65536,t=3,p=4$AO8XsjZEt2aaGL7Xh/4DeQ$vTplDqP6zL3Kk8uCUu9rPV1+dT3hSmo8Si8DDH3nhQU', 123456);
                  
 CREATE TABLE tblRoleUser (
   userID int(11) NOT NULL,

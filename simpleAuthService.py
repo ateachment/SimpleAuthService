@@ -1,6 +1,6 @@
 from flask import Flask, request
 import json
-import hashlib
+from argon2 import PasswordHasher
 import secrets
 import db
 import settings
@@ -34,18 +34,25 @@ def loginUser():
         return 'Content-Type not supported: ' + content_type, 400   # Bad request
     
     db1 = db.Db()
-    hashedPW = hashlib.sha512(str(password).encode('utf-8')).hexdigest()
-    query = "SELECT userId FROM tblUser WHERE username='%s' AND pwd='%s'" %(username, hashedPW)
+    ph = PasswordHasher()
+    hashedPW = ph.hash(str(password))
+    query = "SELECT userId, pwd FROM tblUser WHERE username='%s'" %(username)
     result = db1.execute(query)
     if(result):
-        userId = result[0][0]                                       # first row, first element
-        token = generateToken()
-        query = "UPDATE tblUser SET token = '%s' WHERE userID=%d" %(token, userId)
-        result = db1.execute(query)
-        db1.commit()                                                # actually execute
-        return json.dumps({ "token": token })                       # 200 OK
+        for row in result:                                          # more than one user with this username possible
+            try:                                                    # verify hashed password fail -> throws exception
+                if ph.verify(row[1], password) == True:             # check hashed password
+                    userId = row[0]                                 
+                    token = generateToken()
+                    query = "UPDATE tblUser SET token = '%s' WHERE userID=%d" %(token, userId)
+                    result = db1.execute(query)
+                    db1.commit()                                    # actually execute
+                    return json.dumps({ "token": token })           # 200 OK
+            except:
+                pass
+        return json.dumps({ "token": "-1" }), 403                   # 403 forbidden - wrong password
     else:
-        return json.dumps({ "token": "-1" }), 403                   # 403 forbidden
+        return json.dumps({ "token": "-1" }), 403                   # 403 forbidden - no user with this username
     del db1                                                         # close db connection
                                                     
                                                     

@@ -1,4 +1,8 @@
-import hashlib
+from argon2 import PasswordHasher
 
-# test hashlib
-print(hashlib.sha512(str("testPwd").encode('utf-8')).hexdigest())
+ph = PasswordHasher()
+hash = ph.hash("testPwd")
+print(hash) 
+
+print(ph.verify(hash, "testPwd"))
+
