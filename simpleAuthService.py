@@ -1,5 +1,7 @@
-from flask import Flask, request, render_template, make_response
+from flask import Flask, redirect, request, render_template, make_response
 import json 
+import requests
+from oauthlib.oauth2 import WebApplicationClient
 from argon2 import PasswordHasher
 import jwt 
 from cryptography.hazmat.primitives import serialization
@@ -29,7 +31,7 @@ def roles(roleIDs):
         elif roleID == 2:
             roles.append("Viewer")
         else:
-            raise Exception("RoleID %i not defined")
+            raise Exception("RoleID %d not defined" %(roleID))
     return roles
 
 def decodeJWT(encoded_token):
@@ -56,6 +58,14 @@ def standard_get_response(page):
         return standard_response(page, token)
 
 
+# OAuth 2 client setup
+client = WebApplicationClient(settings.GOOGLE_CLIENT_ID)
+
+def get_google_provider_cfg():                                              # get google openId endpoints
+    return requests.get(settings.GOOGLE_DISCOVERY_URL).json()
+
+
+
 
 @app.route('/')
 def index():
@@ -67,6 +77,92 @@ def index():
         return render_template('login.html', message = "Your session has expired. Please login again.")
     else:                                                                   # validated and updated -> Dashboard
         return standard_response("dashboard.html", token)
+
+
+@app.route("/googleLogin")
+def login():
+    # Find out what URL to hit for Google login
+    google_provider_cfg = get_google_provider_cfg()
+    authorization_endpoint = google_provider_cfg["authorization_endpoint"]
+
+    # Use library to construct the request for Google login and provide
+    # scopes that let you retrieve user's profile from Google
+    request_uri = client.prepare_request_uri(
+        authorization_endpoint,
+        redirect_uri=request.base_url + "/callback",
+        scope=["email"],
+    )
+    return redirect(request_uri)
+
+@app.route("/googleLogin/callback")
+def callback():
+    # Get authorization code Google sent back to you
+    code = request.args.get("code")
+
+    # Find out what URL to hit to get tokens that allow you to ask for
+    # things on behalf of a user
+    google_provider_cfg = get_google_provider_cfg()
+    token_endpoint = google_provider_cfg["token_endpoint"]
+
+    # Prepare and send a request to get tokens! Yay tokens!
+    token_url, headers, body = client.prepare_token_request(
+        token_endpoint,
+        authorization_response=request.url,
+        redirect_url=request.base_url,
+        code=code
+    )
+    token_response = requests.post(
+        token_url,
+        headers=headers,
+        data=body,
+        auth=(settings.GOOGLE_CLIENT_ID, settings.GOOGLE_CLIENT_KEY),
+    )
+
+    # Parse the tokens!
+    client.parse_request_body_response(json.dumps(token_response.json()))
+
+    # Now that you have tokens (yay) let's find and hit the URL
+    # from Google that gives you the user's profile information,
+    # including their Google profile image and email
+    userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
+    uri, headers, body = client.add_token(userinfo_endpoint)
+    userinfo_response = requests.get(uri, headers=headers, data=body)
+
+    #You want to make sure their email is verified.
+    # The user authenticated with Google, authorized your
+    # app, and now you've verified their email through Google!
+    if userinfo_response.json().get("email_verified"):
+        users_email = userinfo_response.json()["email"]
+    else:
+        return "User email not available or not verified by Google.", 400
+
+    # Create a user in db with the information provided by Google if not already exists
+    db1 = db.Db()
+    query = "SELECT userID FROM tblUser WHERE username = '%s'" %(users_email)
+    result = db1.execute(query)
+    if len(result) == 0:
+        query = "INSERT INTO tblUser SET username = '%s'" %(users_email)
+        result = db1.execute(query)
+        db1.commit()
+        # only role "Viewer" will be given
+        query = "SELECT userID FROM tblUser WHERE username = '%s'" %(users_email)
+        result = db1.execute(query)
+        if(result):         
+            userId = result[0][0]                   # i.e. result = [(12,)]
+            query = "INSERT INTO tblRoleUser VALUES (%d, 2)" %(userId)
+            result = db1.execute(query)    
+            db1.commit()
+    del db1                                         # close db connection
+
+    # Login user by creating jwt   
+    expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=10) # Expiration 10 seconds in the future     
+    token = jwt.encode({"exp": expiry, "roleIDs": [2] }, private_key, algorithm="RS256") 
+    
+    # Send user back to homepage
+    resp = make_response(render_template('dashboard.html'))
+    resp.set_cookie('token', token, httponly=True, secure=True)
+    return resp         
+
 
 @app.route('/dashboard', methods=['POST', 'GET'])   
 def dashboard():
@@ -184,4 +280,5 @@ def cleanUp_blocked_token_list():
     return json.dumps({ "cleanedUp": len(jwts_to_clear) }), 200 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(ssl_context="adhoc")   #  run using https to ensure an encrypted connection with Google (pip install pyOpenSSL)
+    

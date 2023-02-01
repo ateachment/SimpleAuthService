@@ -12,4 +12,10 @@ PASSWORD = b"YourPassword"
 PRIVATE_KEY = b"""YourPrivateKey"""
 PUBLIC_KEY = b"""YourPublicKEY"""
 
+# Google Auth-Client
+GOOGLE_CLIENT_ID = "YourGoogleAuthClientID"
+GOOGLE_CLIENT_KEY = "YourGoogleAuthClientKey"
+GOOGLE_DISCOVERY_URL = ("https://accounts.google.com/.well-known/openid-configuration")
+
+
 DEBUG_MODE = True     # disable DEBUG_MODE in productive environment
