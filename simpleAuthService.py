@@ -104,7 +104,7 @@ def callback():
     google_provider_cfg = get_google_provider_cfg()
     token_endpoint = google_provider_cfg["token_endpoint"]
 
-    # Prepare and send a request to get tokens! Yay tokens!
+    # Prepare and send a request to get tokens! 
     token_url, headers, body = client.prepare_token_request(
         token_endpoint,
         authorization_response=request.url,
@@ -148,7 +148,7 @@ def callback():
         query = "SELECT userID FROM tblUser WHERE username = '%s'" %(users_email)
         result = db1.execute(query)
         if(result):         
-            userId = result[0][0]                   # i.e. result = [(12,)]
+            userId = result[0][0]                   # i.e. result = [(2,)]
             query = "INSERT INTO tblRoleUser VALUES (%d, 2)" %(userId)
             result = db1.execute(query)    
             db1.commit()
@@ -162,6 +162,7 @@ def callback():
     resp = make_response(render_template('dashboard.html'))
     resp.set_cookie('token', token, httponly=True, secure=True)
     return resp         
+
 
 
 @app.route('/dashboard', methods=['POST', 'GET'])   
@@ -211,7 +212,6 @@ def loginUser():
     
     db1 = db.Db()
     ph = PasswordHasher()
-    hashedPW = ph.hash(str(password))
     query = "SELECT userId, pwd FROM tblUser WHERE username='%s'" %(username)
     result = db1.execute(query)
     if(result):
