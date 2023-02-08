@@ -2,6 +2,7 @@
 # ignore settings files
 
 settings.*
+venv/
 
 # https://github.com/microsoft/vscode-python/blob/main/.gitignore
 .DS_Store
