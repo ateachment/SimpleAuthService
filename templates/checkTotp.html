@@ -1,0 +1,13 @@
+{% extends 'index.html' %}
+
+{% block body %}
+  <div class="login-card">
+    <h1>Authentication Code</h1><br>
+    <form id="myForm" action = "/dashboard" method = "post">
+      <input type="hidden" name="factor" value="2_factor" >
+      <input type = "text" name = "totpCode" placeholder = "Your Authentication Code">
+      <input type = "submit" name = "login" class = "login login-submit" value="Login">
+    </form>
+  </div>
+{% endblock %}
+

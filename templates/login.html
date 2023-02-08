@@ -5,6 +5,7 @@
     <h1>Log-in</h1><br>
     <p class='message'>{{message}}</p>
     <form id="myForm" action = "/dashboard" method = "post">
+      <input type="hidden" name="factor" value="1_factor" >
       <input id='username' type = "text" name = "username" value="testUser" placeholder="Your Username">
       <input id='password' type = "password" name = "password" value="testPwd" placeholder="Your Password"/>
       <input type="submit" name="login" class="login login-submit" value="Login">

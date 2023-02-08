@@ -1,0 +1,13 @@
+{% extends 'index.html' %}
+
+{% block body %}
+  <div class="login-card">
+    <h1>Scan QR Code</h1>
+    <img class="qrcode" src={{ qr_code_data }} />
+    <form id="myForm" action = "/activateTotp" method = "post">
+      <input type = "text" name = "totpCode" placeholder="Your Authentication Code">
+      <input type="submit" name="login" class="login login-submit" value="Submit">
+    </form>
+  </div>
+{% endblock %}
+

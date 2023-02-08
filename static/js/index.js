@@ -1,4 +1,5 @@
 var token = "-1";
+
 function login () {
     // post form data
     // var formData = new FormData(document.getElementById("myForm"));   // lazy but short
