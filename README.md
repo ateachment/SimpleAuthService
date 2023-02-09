@@ -24,6 +24,8 @@ Use the package manager [pip](https://pip.pypa.io/en/stable/) to install require
 ```bash
 pip install -r requirements.txt
 ```
+Start MySQL/MariaDB server and run SQL script <i>initdb.sql</i>
+
 ## Program start
 
 ```bash
@@ -32,6 +34,14 @@ python simpleAuthService.py
 
 Open https://127.0.0.1:5000 with the browser
 
+## Testing
+
+Start the test program with 
+```bash
+pytest testSimpleAuthService.py
+```
+and/or <br>
+open <i>openapi.yaml</i> in https://editor.swagger.io/ and test the web service with the Swagger editor.
 
 ## Contributing
 
