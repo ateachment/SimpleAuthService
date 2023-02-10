@@ -33,7 +33,6 @@ Use the package manager [pip](https://pip.pypa.io/en/stable/) to install require
 ```bash
 pip install -r requirements.txt
 ```
-Start MySQL/MariaDB server and run SQL script <i>initdb.sql</i>
 
 ## Program start
 
