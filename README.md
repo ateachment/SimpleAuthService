@@ -16,13 +16,27 @@ Includes:
 </ul>
 
 ## Installation
-
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install requirements.
+<ol>
+<li>Use the package manager [pip](https://pip.pypa.io/en/stable/) to install requirements.
 
 ```bash
 pip install -r requirements.txt
 ```
-Start MySQL/MariaDB server and run SQL script <i>initdb.sql</i>
+</li>
+<li>Start MySQL/MariaDB server and run SQL script <i>initdb.sql</i></li>
+<li>Copy or rename <i>settings-template.py</i> to <i>settings.py</i> and enter the appropriate connection data for the database (can be taken from <i>initdb.sql</i>).</li>
+<li>Create a key pair for asynchronous encryption:
+
+Private key:
+```bash
+openssl genrsa -aes256 -out private_key.pem 2048
+```
+Generation of the corresponding public key:
+```bash
+openssl rsa -pubout -in private_key.pem -out public_key.pem
+```
+Also copy the two keys together with the used password into the settings.py file. (Caution. Do not lose any character or add too much - not even a line break).</li>
+</ul>
 
 ## Program start
 
