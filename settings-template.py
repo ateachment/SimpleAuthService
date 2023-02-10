@@ -17,5 +17,6 @@ GOOGLE_CLIENT_ID = "YourGoogleAuthClientID"
 GOOGLE_CLIENT_KEY = "YourGoogleAuthClientKey"
 GOOGLE_DISCOVERY_URL = ("https://accounts.google.com/.well-known/openid-configuration")
 
+EXPIRY_TIME_SECONDS = 60
 
 DEBUG_MODE = True     # disable DEBUG_MODE in productive environment
