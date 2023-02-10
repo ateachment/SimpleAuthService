@@ -13,7 +13,6 @@ Includes:
 <li>authentification web service</li>
 <li>pytest file</li>
 <li>OpenAPI description file</li>
-<li>MySql init file</li>
 </ul>
 
 ## Installation
