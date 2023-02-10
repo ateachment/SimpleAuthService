@@ -36,7 +36,7 @@ Generation of the corresponding public key:
 openssl rsa -pubout -in private_key.pem -out public_key.pem
 ```
 Also copy the two keys together with the used password into the settings.py file. (Caution. Do not lose any character or add too much - not even a line break).</li>
-</ul>
+</ol>
 
 ## Program start
 
