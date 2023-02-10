@@ -43,7 +43,7 @@ Also copy the two keys together with the used password into the <i>settings.py</
 Google developers credentials page<br>
 https://console.developers.google.com/apis/credentials (Google account required.)
 
-This will provide you with a Google Client ID and a Google Client Key. Both are also copied to <i>settings.py</i>.
+This will provide you with a Google Client ID and a Google Client Key. Both are also copied to <i>settings.py</i>.</li>
 </ol>
 
 ## Program start
