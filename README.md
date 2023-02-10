@@ -18,12 +18,34 @@ Includes:
 
 ## Installation
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install requirements.
+<ol>
+<li>Use the package manager [pip](https://pip.pypa.io/en/stable/) to install requirements.
 
 ```bash
 pip install -r requirements.txt
 ```
-Start MySQL/MariaDB server and run SQL script <i>initdb.sql</i>
+</li>
+<li>Start MySQL/MariaDB server and run SQL script <i>initdb.sql</i></li>
+<li>Copy or rename <i>settings-template.py</i> to <i>settings.py</i> and enter the appropriate connection data for the database (can be taken from <i>initdb.sql</i>).</li>
+<li>Create a key pair for asynchronous encryption:
+
+Private key:
+```bash
+openssl genrsa -aes256 -out private_key.pem 2048
+```
+Generation of the corresponding public key:
+```bash
+openssl rsa -pubout -in private_key.pem -out public_key.pem
+```
+Also copy the two keys together with the used password into the <i>settings.py</i> file. (Caution. Do not lose any character or add too much - not even a line break).</li>
+<li>Register the application as a client with Google as an authentication provider:
+
+Google developers credentials page<br>
+https://console.developers.google.com/apis/credentials (Google account required.)
+
+This will provide you with a Google Client ID and a Google Client Key. Both are also copied to <i>settings.py</i>.
+</ol>
+
 ## Program start
 
 ```bash

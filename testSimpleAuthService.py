@@ -1,4 +1,3 @@
-import pytest 
 import settings
 import jwt
 from cryptography.hazmat.primitives import serialization
