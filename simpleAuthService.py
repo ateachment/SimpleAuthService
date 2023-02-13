@@ -270,22 +270,22 @@ def loginUser1():
                         for row2 in result2:
                             roleIDs.append(row2[0])        
 
-                        # create url to qrcode and totp code
-                        totpKey = pyotp.random_base32()                 # randomly generated key
-                        if settings.DEBUG_MODE:
-                            totpKey="CautionDebugModeTrueKeyIsNotGood"  # static key only for testing purposes
-                        uri = pyotp.totp.TOTP(totpKey).provisioning_uri(name=username, issuer_name='SimpleAuthService')
-                        query = f"UPDATE tblUser SET totpKey = '%s' WHERE userID = %d" %(totpKey, userId)
-                        result = db1.execute(query)
-                        db1.commit()
-                        del db1                                         # close db connection
-
                         # create jwt
                         expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=settings.EXPIRY_TIME_SECONDS) # Expiration 10 seconds in the future     
                         token = jwt.encode({"exp": expiry, "userId": userId, "roleIDs": roleIDs }, private_key, algorithm="RS256") 
                         if totpActivated == 0:
+                            # create url to qrcode and totp code
+                            totpKey = pyotp.random_base32()                 # randomly generated key
+                            if settings.DEBUG_MODE:
+                                totpKey="CautionDebugModeTrueKeyIsNotGood"  # static key only for testing purposes
+                            uri = pyotp.totp.TOTP(totpKey).provisioning_uri(name=username, issuer_name='SimpleAuthService')
+                            query = f"UPDATE tblUser SET totpKey = '%s' WHERE userID = %d" %(totpKey, userId)
+                            result = db1.execute(query)
+                            db1.commit()
+                            del db1                                         # close db connection
                             return json.dumps({ "token": token, "totpActivated": totpActivated, "uri": uri}), 200  # 200 OK
                         else:
+                            del db1
                             return json.dumps({ "token": token, "totpActivated": totpActivated}), 200  # 200 OK
                     else:
                         del db1                                     # close db connection
@@ -293,6 +293,7 @@ def loginUser1():
                 pass
         return json.dumps({ "token": "-1" }), 403                   # 403 forbidden - wrong password
     else:
+        del db1
         return json.dumps({ "token": "-1" }), 403                   # 403 forbidden - no user with this username
 
 
