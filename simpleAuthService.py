@@ -239,7 +239,7 @@ private_key = serialization.load_pem_private_key(settings.PRIVATE_KEY, password=
 
 jwt_blockedlist = {}
 
-@app.route('/auth/user/login1', methods=['POST'])
+@app.route('/auth/user/login1', methods=['POST'])                   # check username and pw
 def loginUser1():
     content_type = request.headers.get('Content-Type')
     if content_type == 'application/json':
@@ -282,7 +282,7 @@ def loginUser1():
                             query = f"UPDATE tblUser SET totpKey = '%s' WHERE userID = %d" %(totpKey, userId)
                             result = db1.execute(query)
                             db1.commit()
-                            del db1                                         # close db connection
+                            del db1                                         # falclose db connection
                             return json.dumps({ "token": token, "totpActivated": totpActivated, "uri": uri}), 200  # 200 OK
                         else:
                             del db1
