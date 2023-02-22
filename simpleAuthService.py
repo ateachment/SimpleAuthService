@@ -35,7 +35,6 @@ def loginUser():
     
     db1 = db.Db()
     ph = PasswordHasher()
-    hashedPW = ph.hash(str(password))
     query = "SELECT userId, pwd FROM tblUser WHERE username='%s'" %(username)
     result = db1.execute(query)
     if(result):
