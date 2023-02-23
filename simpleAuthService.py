@@ -117,16 +117,16 @@ def loginUser():
     
     db1 = db.Db()
     ph = PasswordHasher()
-    query = "SELECT userId, pwd FROM tblUser WHERE username='%s'" %(username)
-    result = db1.execute(query)
+    query = "SELECT userId, pwd FROM tblUser WHERE username=%s"
+    result = db1.execute(query,(username,))
     if(result):
         for row in result:                                          # more than one user with this username possible
             try:                                                    # verify hashed password fail -> throws exception
                 if ph.verify(row[1], password) == True:             # check hashed password
                     userId = row[0]                                 
                     token = generateToken()
-                    query = "UPDATE tblUser SET token = '%s' WHERE userID=%d" %(token, userId)
-                    result = db1.execute(query)
+                    query = "UPDATE tblUser SET token = %s WHERE userID = %s" 
+                    result = db1.execute(query, (token, userId))
                     db1.commit()                                    # actually execute
                     return json.dumps({ "token": token }), 200      # 200 OK
             except:
@@ -140,8 +140,8 @@ def loginUser():
 @app.route('/auth/user/<token>', methods=['DELETE'])
 def logoutUser(token):
     db1 = db.Db()
-    query = "UPDATE tblUser SET token = '-1' WHERE token=%s" %(token)
-    result = db1.execute(query)
+    query = "UPDATE tblUser SET token = '-1' WHERE token=%s" 
+    result = db1.execute(query, (token,))
     db1.commit()      
     del db1       
     return "{ \"token\": \"-1\" }", 200                             # 200 logout sucessful
@@ -150,13 +150,13 @@ def logoutUser(token):
 def autorize(token):
     db1 = db.Db()
     # Update timestamp or make token invalid
-    query = "UPDATE tblUser SET tokenExpiry = CURRENT_TIMESTAMP WHERE tokenExpiry >= (NOW() - INTERVAL 10 SECOND) AND token <> '-1' AND token=%s" %(token)
-    result = db1.execute(query)
-    query = "UPDATE tblUser SET token = '-1' WHERE tokenExpiry < (NOW() - INTERVAL 10 SECOND) AND token <> '-1' AND token=%s" %(token)
-    result = db1.execute(query)  
+    query = "UPDATE tblUser SET tokenExpiry = CURRENT_TIMESTAMP WHERE tokenExpiry >= (NOW() - INTERVAL 10 SECOND) AND token <> '-1' AND token=%s" 
+    result = db1.execute(query, (token,))
+    query = "UPDATE tblUser SET token = '-1' WHERE tokenExpiry < (NOW() - INTERVAL 10 SECOND) AND token <> '-1' AND token=%s" 
+    result = db1.execute(query, (token,))  
     db1.commit()
-    query = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE token <> '-1' AND token = %s" %(token)
-    result = db1.execute(query)        # i.e. [(1,), (2,)] or []
+    query = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE token <> '-1' AND token = %s" 
+    result = db1.execute(query, (token,))        # i.e. [(1,), (2,)] or []
     if(result):                        # role(s) available
         roleIDs = []
         for row in result:
