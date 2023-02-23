@@ -12,8 +12,8 @@ encoded_token = ""
 
 # reset totpActivated
 db1 = db.Db()
-query = "UPDATE tblUser SET totpActivated = FALSE WHERE userID = 1"
-result = db1.execute(query)
+query = "UPDATE tblUser SET totpActivated = FALSE WHERE userID = %s"
+result = db1.execute(query, (1,))
 db1.commit()
 del db1 
 

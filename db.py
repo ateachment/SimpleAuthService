@@ -17,8 +17,8 @@ class Db:
 
         self.__cursor = self.__connection.cursor()
 
-    def execute(self, sql):
-        self.__cursor.execute(sql)
+    def execute(self, sql, values):
+        self.__cursor.execute(sql, values)
         return self.__cursor.fetchall()
 
     def commit(self):

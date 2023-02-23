@@ -141,19 +141,19 @@ def callback():
 
     # Create a user in db with the information provided by Google if not already exists
     db1 = db.Db()
-    query = "SELECT userID FROM tblUser WHERE username = '%s'" %(users_email)
-    result = db1.execute(query)
+    query = "SELECT userID FROM tblUser WHERE username = %s" 
+    result = db1.execute(query, (users_email,))
     if len(result) == 0:
-        query = "INSERT INTO tblUser SET username = '%s'" %(users_email)
-        result = db1.execute(query)
+        query = "INSERT INTO tblUser SET username = %s" 
+        result = db1.execute(query, (users_email,))
         db1.commit()
         # only role "Viewer" will be given
-        query = "SELECT userID FROM tblUser WHERE username = '%s'" %(users_email)
-        result = db1.execute(query)
+        query = "SELECT userID FROM tblUser WHERE username = %s" 
+        result = db1.execute(query, (users_email,))
         if(result):         
             userId = result[0][0]                   # i.e. result = [(2,)]
-            query = "INSERT INTO tblRoleUser VALUES (%d, 2)" %(userId)
-            result = db1.execute(query)    
+            query = "INSERT INTO tblRoleUser VALUES (%s, 2)" 
+            result = db1.execute(query, (userId,))    
             db1.commit()
     del db1                                         # close db connection
 
@@ -253,8 +253,8 @@ def loginUser1():
     
     db1 = db.Db()
     ph = PasswordHasher()
-    query = "SELECT userId, pwd, totpActivated  FROM tblUser WHERE username='%s'" %(username)
-    result = db1.execute(query)
+    query = "SELECT userId, pwd, totpActivated  FROM tblUser WHERE username=%s" 
+    result = db1.execute(query,  (username,))
     if(result):
         for row in result:                                          # more than one user with this username possible
             try:                                                    # verify hashed password fail -> throws exception
@@ -263,8 +263,8 @@ def loginUser1():
                     
                     userId = row[0]                                 # get userId and then roleIDs
                     totpActivated = row[2]                          # false = 0, true = 1
-                    query2 = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE tblUser.userID=" + str(userId)
-                    result2 = db1.execute(query2)
+                    query2 = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE tblUser.userID=%s" 
+                    result2 = db1.execute(query2, (userId,))
                     if(result2):
                         roleIDs = []
                         for row2 in result2:
@@ -279,8 +279,8 @@ def loginUser1():
                             if settings.DEBUG_MODE:
                                 totpKey="CautionDebugModeTrueKeyIsNotGood"  # static key only for testing purposes
                             uri = pyotp.totp.TOTP(totpKey).provisioning_uri(name=username, issuer_name='SimpleAuthService')
-                            query = f"UPDATE tblUser SET totpKey = '%s' WHERE userID = %d" %(totpKey, userId)
-                            result = db1.execute(query)
+                            query = f"UPDATE tblUser SET totpKey = %s WHERE userID = %s" 
+                            result = db1.execute(query, (totpKey, userId))
                             db1.commit()
                             del db1                                         # falclose db connection
                             return json.dumps({ "token": token, "totpActivated": totpActivated, "uri": uri}), 200  # 200 OK
@@ -314,18 +314,18 @@ def loginUser2():
         userId = decoded_token.get("userId")
     
         db1 = db.Db()
-        query = f"SELECT totpKey FROM tblUser WHERE userID = '%s'" %(userId)
-        result = db1.execute(query)
+        query = f"SELECT totpKey FROM tblUser WHERE userID = %s" 
+        result = db1.execute(query, (userId,))
         if(result):         
             totpKey = result[0][0]                                  # i.e. result = [(2,)]
             totp = pyotp.TOTP(totpKey)
             if totp.verify(totpCode):                               # OTP verified for current time
-                query = f"UPDATE tblUser SET totpActivated = TRUE WHERE userID = '%s'" %(userId)
-                result = db1.execute(query)
+                query = f"UPDATE tblUser SET totpActivated = TRUE WHERE userID = %s" 
+                result = db1.execute(query, (userId,))
                 db1.commit()
 
-                query2 = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE tblUser.userID=" + str(userId)
-                result2 = db1.execute(query2)
+                query2 = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE tblUser.userID=%s" 
+                result2 = db1.execute(query2, (userId,))
                 del db1                                             # close db connection
                 if(result2):
                     roleIDs = []
