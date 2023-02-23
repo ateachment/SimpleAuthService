@@ -115,15 +115,15 @@ def loginUser():
     
     db1 = db.Db()
     ph = PasswordHasher()
-    query = "SELECT userId, pwd FROM tblUser WHERE username='%s'" %(username)
-    result = db1.execute(query)
+    query = "SELECT userId, pwd FROM tblUser WHERE username=%s" 
+    result = db1.execute(query, (username,))
     if(result):
         for row in result:                                          # more than one user with this username possible
             try:                                                    # verify hashed password fail -> throws exception
                 if ph.verify(row[1], password) == True:             # check hashed password
                     userId = row[0]                                 # get userId and then roleIDs
-                    query2 = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE tblUser.userID=" + str(userId)
-                    result2 = db1.execute(query2)
+                    query2 = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE tblUser.userID=%s" 
+                    result2 = db1.execute(query2, (userId,))
                     del db1                                         # close db connection
                     if(result2):
                         roleIDs = []
