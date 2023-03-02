@@ -107,11 +107,11 @@ def test_cleanUp_blocked_token_list():
     assert cleanedUp == 0             # direct clean up of blocked jwts -> nothing has to be done
 
 def test_cleanUp_blocked_token_list2():
-    time.sleep(10)
+    time.sleep(settings.EXPIRY_TIME_SECONDS)
     response = app.test_client().delete('/auth/cleanUp')
     assert response.status_code == 200
     cleanedUp = json.loads(response.data.decode('utf-8')).get("cleanedUp")
-    assert cleanedUp == 1             # 10 sec later blocked jwt can be removed from the blocked list
+    assert cleanedUp == 1     # settings.EXPIRY_TIME_SECONDS later blocked jwt can be removed from the blocked list
 
 
 
