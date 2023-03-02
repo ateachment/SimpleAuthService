@@ -257,9 +257,9 @@ def validate_and_update_token(token):
 @app.route('/auth/user/<token>', methods=['DELETE'])                # logout
 def logoutUser(token):
     try:
-        decodeJWT(encoded_token=token)
-        expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=10)    # Expiration 10 seconds in the future     
-        jwt_blockedlist.update({ token : str(expiry) })                         # logged out -> token in blockedlist
+        decoded_token = decodeJWT(encoded_token=token)
+        exp = decoded_token.get("exp")
+        jwt_blockedlist.update({ token : exp })                     # logged out -> token in blockedlist
     except:
         pass
     return "{ \"token\": \"-1\" }", 200                             # 200 logout sucessful
@@ -267,17 +267,16 @@ def logoutUser(token):
 @app.route('/auth/cleanUp', methods=['DELETE'])                     # Webhook: clean up blocked_token_lists
 def cleanUp_blocked_token_list():
     print(jwt_blockedlist)
-    now = dt.datetime.now(tz=timezone.utc) 
-    print(now)
+    now = dt.datetime.now(tz=timezone.utc).timestamp() 
     jwts_to_clear = []
-    for key in jwt_blockedlist:
-        if dt.datetime.fromisoformat(jwt_blockedlist[key]) < now:
-            jwts_to_clear.append(key)
-    for key in jwts_to_clear:
+    for key in jwt_blockedlist:                                     # Put tokens to be cleaned into a temporary list.
+        if jwt_blockedlist[key] < now:                              # They cannot be removed directly because 
+            jwts_to_clear.append(key)                               # for loop would throw an exception.
+    for key in jwts_to_clear:                                       
         jwt_blockedlist.pop(key)
     print(jwt_blockedlist)
     
-    return json.dumps({ "cleanedUp": len(jwts_to_clear) }), 200 
+    return json.dumps({ "cleanedUp": len(jwts_to_clear) }), 200     # return number of cleaned tokens for testing purposes
 
 if __name__ == '__main__':
     app.run(ssl_context="adhoc")   #  run using https to ensure an encrypted connection with Google (pip install pyOpenSSL)
