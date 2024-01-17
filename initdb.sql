@@ -23,7 +23,7 @@ CREATE TABLE tblUser (
   userID int(11) NOT NULL AUTO_INCREMENT,
   username varchar(50) DEFAULT NULL,
   pwd varchar(128) DEFAULT NULL,
-  token bigint(64) NOT NULL,
+  token varchar(128) NOT NULL,
   tokenExpiry timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY(userID)
 );
