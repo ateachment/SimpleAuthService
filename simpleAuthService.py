@@ -1,4 +1,5 @@
 from flask import Flask, redirect, request, render_template, make_response
+import os
 import json 
 import requests
 from oauthlib.oauth2 import WebApplicationClient
@@ -9,7 +10,7 @@ from cryptography.hazmat.backends import default_backend
 import pyotp
 import qrcode
 from io import BytesIO
-from base64 import b64encode
+import base64 
 import datetime as dt
 from datetime import timezone, timedelta
 import db
@@ -19,6 +20,9 @@ import settings
 from flask_cors import CORS
 
 app = Flask(__name__)
+
+# load public key for jwt encoding and decoding
+public_key = serialization.load_pem_public_key(settings.PUBLIC_KEY, backend=default_backend())
 
 if settings.DEBUG_MODE:
     CORS(app)                               # make cross-origin AJAX possible 
@@ -39,7 +43,6 @@ def roles(roleIDs):
     return roles
 
 def decodeJWT(encoded_token):
-    public_key = serialization.load_pem_public_key(settings.PUBLIC_KEY, backend=default_backend())
     decoded_token = jwt.decode(encoded_token, public_key, algorithms=["RS256"])
     return decoded_token
 
@@ -193,22 +196,27 @@ def dashboard():
                     buffer = BytesIO()
                     qr_code_img.save(buffer)
                     buffer.seek(0)
-                    encoded_img = b64encode(buffer.read()).decode()
+                    encoded_img = base64.b64encode(buffer.read()).decode()
                     qr_code_data = f'data:image/png;base64,{encoded_img}'
                     resp = make_response(render_template("qrcode.html", qr_code_data = qr_code_data))
                     resp.set_cookie('token', jsonResponse['token'], httponly=True, secure=True)             
                     return resp                                             # load qrcode form
                 else:                                                       # totp already activated -> check totp code
-                    resp = make_response(render_template("checkTotp.html"))
+                    if(settings.DEBUG_MODE):
+                        totpKey="CautionDebugModeTrueKeyIsNotGood"
+                        totp = pyotp.TOTP(totpKey)
+                        resp = make_response(render_template("checkTotp.html", totpCode=totp.now()))  # only for testing purposes - show current totp code in form
+                    else:
+                        resp = make_response(render_template("checkTotp.html", totpCode=""))
                     resp.set_cookie('token', jsonResponse['token'], httponly=True, secure=True)             
                     return resp                                             # load check totp form
         
         if factor == "2_factor":
-            jsonResponse = json.loads(loginUser2()[0])                      # loginUser returns i.e. ('{"token": jwt}', 200)
+            jsonResponse = json.loads(loginUser2()[0])                      # loginUser2 returns i.e. ('{"token": jwt}', 200)
             if jsonResponse['token'] == '-1':                               # 2fa failed -> login form 
                 return render_template('login.html', message = "Wrong authentification code.")                     
             else:                                 
-                return standard_get_response("dashboard.html")                              
+                return standard_response("dashboard.html",token=jsonResponse['token'])   # 2fa successful -> load dashboard                      
                                        
 
     if request.method == 'GET':                                             # links or redirected by login.html (already logged on)
@@ -234,10 +242,12 @@ def logout():
 
 #################################################################
 # auth service
+#################################################################
 
 private_key = serialization.load_pem_private_key(settings.PRIVATE_KEY, password=settings.PASSWORD, backend=default_backend())
 
 jwt_blockedlist = {}
+passkey_challenges = {} # in-memory storage of passkey login challenges (challenge: creation time) - for testing purposes only, should be stored in db in production environment
 
 @app.route('/auth/user/login1', methods=['POST'])                   # check username and pw
 def loginUser1():
@@ -263,32 +273,24 @@ def loginUser1():
                     
                     userId = row[0]                                 # get userId and then roleIDs
                     totpActivated = row[2]                          # false = 0, true = 1
-                    query2 = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE tblUser.userID=%s" 
-                    result2 = db1.execute(query2, (userId,))
-                    if(result2):
-                        roleIDs = []
-                        for row2 in result2:
-                            roleIDs.append(row2[0])        
-
-                        # create jwt
-                        expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=settings.EXPIRY_TIME_SECONDS) # Expiration 10 seconds in the future     
-                        token = jwt.encode({"exp": expiry, "userId": userId, "roleIDs": roleIDs }, private_key, algorithm="RS256") 
-                        if totpActivated == 0:
-                            # create url to qrcode and totp code
-                            totpKey = pyotp.random_base32()                 # randomly generated key
-                            if settings.DEBUG_MODE:
-                                totpKey="CautionDebugModeTrueKeyIsNotGood"  # static key only for testing purposes
-                            uri = pyotp.totp.TOTP(totpKey).provisioning_uri(name=username, issuer_name='SimpleAuthService')
-                            query = f"UPDATE tblUser SET totpKey = %s WHERE userID = %s" 
-                            result = db1.execute(query, (totpKey, userId))
-                            db1.commit()
-                            del db1                                         # falclose db connection
-                            return json.dumps({ "token": token, "totpActivated": totpActivated, "uri": uri}), 200  # 200 OK
-                        else:
-                            del db1
-                            return json.dumps({ "token": token, "totpActivated": totpActivated}), 200  # 200 OK
+                   
+                    # create jwt
+                    expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=settings.EXPIRY_TIME_SECONDS) # Expiration 10 seconds in the future     
+                    token = jwt.encode({"exp": expiry, "userId": userId }, private_key, algorithm="RS256") 
+                    if totpActivated == 0:
+                        # create url to qrcode and totp code
+                        totpKey = pyotp.random_base32()                 # randomly generated key
+                        if settings.DEBUG_MODE:
+                            totpKey="CautionDebugModeTrueKeyIsNotGood"  # static key only for testing purposes
+                        uri = pyotp.totp.TOTP(totpKey).provisioning_uri(name=username, issuer_name='SimpleAuthService')
+                        query = f"UPDATE tblUser SET totpKey = %s WHERE userID = %s" 
+                        result = db1.execute(query, (totpKey, userId))
+                        db1.commit()
+                        del db1                                         # close db connection
+                        return json.dumps({ "token": token, "totpActivated": totpActivated, "uri": uri}), 200  # 200 OK
                     else:
-                        del db1                                     # close db connection
+                        del db1
+                        return json.dumps({ "token": token, "totpActivated": totpActivated}), 200  # 200 OK
             except:                                                 # verification of password an hash failed
                 pass
         return json.dumps({ "token": "-1" }), 403                   # 403 forbidden - wrong password
@@ -299,6 +301,7 @@ def loginUser1():
 
 @app.route('/auth/user/login2', methods=['POST'])                    # check 2fa totp
 def loginUser2():
+    print("loginUser2 called")
     content_type = request.headers.get('Content-Type')
     if content_type == 'application/json':
         totpCode = request.json['totpCode']
@@ -323,7 +326,7 @@ def loginUser2():
                 query = f"UPDATE tblUser SET totpActivated = TRUE WHERE userID = %s" 
                 result = db1.execute(query, (userId,))
                 db1.commit()
-
+                print("2fa successful")
                 query2 = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE tblUser.userID=%s" 
                 result2 = db1.execute(query2, (userId,))
                 del db1                                             # close db connection
@@ -333,7 +336,8 @@ def loginUser2():
                         roleIDs.append(row2[0])        
                     # create jwt
                     expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=settings.EXPIRY_TIME_SECONDS) # Expiration 10 seconds in the future     
-                    token = jwt.encode({"exp": expiry, "roleIDs": roleIDs }, private_key, algorithm="RS256") 
+                    token = jwt.encode({"userID": userId, "exp": expiry, "roleIDs": roleIDs }, private_key, algorithm="RS256") 
+                    print(token)
                     return json.dumps({ "token": token}), 200       # 200 OK
             else:
                 del db1                                             # close db connection       
@@ -348,8 +352,107 @@ def loginUser2():
         return json.dumps({ "token": "-1" }), 403                   # 403 forbidden (jwt decoding failed for some reasons)
 
 
-    
-   
+# routes for passkey login
+@app.route('/passkey/login/begin', methods=['POST'])
+def passkey_login_begin():
+
+    # Challenge erzeugen
+    challenge_bytes = os.urandom(32)
+    challenge = base64.urlsafe_b64encode(challenge_bytes).decode().rstrip("=")
+
+    # im Arbeitsspeicher speichern
+    passkey_challenges[challenge] = dt.time()
+
+    # Optionen für Passkey-Login zurückgeben
+    options = {
+        "challenge": challenge,
+        "timeout": 60000,
+        "rpId": settings.DOMAIN,  # rpId = relying party identifier, the website for which the authentication is valid
+        "userVerification": "preferred",  # "required", "preferred" or "discouraged" - if "required" -> authentication only with passkey, if "preferred" -> authentication with passkey if available, otherwise fallback to other authentication methods (e.g. username/password), if "discouraged" -> authentication with passkey is possible but not recommended
+        "allowCredentials": []    # list of allowed credentials, can be used to specify that only certain passkeys are allowed for authentication - left empty in this example to allow any passkey of the user
+    }
+
+    return json.dumps(options), 200
+
+@app.route("/passkey/register/begin", methods=["POST"])
+def passkey_register_begin():
+
+    token = request.cookies.get('token')
+
+    try:
+        decoded_token = decodeJWT(encoded_token=token)
+        print(decoded_token)
+        userId = decoded_token.get("userID")
+
+        db1 = db.Db()
+        query = "SELECT username FROM tblUser WHERE userID=%s"
+        result = db1.execute(query, (userId,))
+
+        if not result:
+            return {"token": "-1"}, 403
+
+        username = result[0][0]
+        print(username)
+
+
+        challenge_bytes = os.urandom(32)
+        challenge = base64.urlsafe_b64encode(challenge_bytes).decode().rstrip("=")
+
+        passkey_challenges[challenge] = {
+            "userId": userId,
+            "created": dt.time()
+        }
+
+        options = {
+            "challenge": challenge,
+            "rp": {
+                "name": "Passkey Demo",
+                "id": settings.DOMAIN
+            },
+            "user": {
+                "id": base64.urlsafe_b64encode(userId.to_bytes(8,"big")).decode().rstrip("="),
+                "name": username,
+                "displayName": username
+            },
+            "pubKeyCredParams": [
+                {"type": "public-key", "alg": -7},
+                {"type": "public-key", "alg": -257}
+            ],
+            "authenticatorSelection": {
+                "userVerification": "preferred"
+            },
+            "timeout": 60000,
+            "attestation": "none"
+        }
+        print(options)
+        return options
+
+    except jwt.ExpiredSignatureError:
+        return {"token": "-2"}, 403
+
+    except Exception as e:
+        return {"token": "-1"}, 403
+
+
+
+@app.route("/passkey/register/finish", methods=["POST"])
+def passkey_register_finish():
+
+    data = request.json
+
+    credential_id = data["id"]
+
+    # später dekodieren wir:
+    # publicKey
+    # signCount
+
+    db.execute("""
+        INSERT INTO tblPasskey
+        (credentialID, userID, publicKey, signCount)
+        VALUES (?, ?, ?, 0)
+    """, (credential_id, current_user.id, "...publickey..."))
+
+    return {"status": "ok"}
 
            
 @app.route('/auth/user/<token>', methods=['PUT'])
@@ -361,7 +464,7 @@ def validate_and_update_token(token):
             roleIDs = decoded_token.get("roleIDs")
 
             expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=settings.EXPIRY_TIME_SECONDS) # Expiration 10 seconds in the future     
-            token = jwt.encode({"exp": expiry, "roleIDs": roleIDs }, private_key, algorithm="RS256")
+            token = jwt.encode({"userID": decoded_token.get("userID"), "exp": expiry, "roleIDs": roleIDs }, private_key, algorithm="RS256")
             return json.dumps({ "token": token }), 200              # 200 token update OK
         else:
             return "{ \"token\": \"-1\" }", 403                     # 403 forbidden
@@ -395,5 +498,5 @@ def cleanUp_blocked_token_list():
     return json.dumps({ "cleanedUp": len(jwts_to_clear) }), 200     # return number of cleaned tokens for testing purposes
 
 if __name__ == '__main__':
-    app.run(ssl_context="adhoc")   #  run using https to ensure an encrypted connection with Google (pip install pyOpenSSL)
+    app.run("localhost",ssl_context="adhoc")   #  run using https to ensure an encrypted connection with Google (pip install pyOpenSSL)
     

@@ -2,27 +2,39 @@
 {% block body %}
   <div class="page">
     {% block content %}
-    <div  id="content">
+    <div id="content">
       <h1>Dashboard</h1>
+
       Logged in with roles:
       <ul>
         {% for role in roles %}
         <li>{{ role }}</li>
         {% endfor %}
       </ul>
+
       <p>
         <a href="/pages/todo.html">todo</a>
       </p>
+
+      <p>
+        <button id="registerPasskeyBtn">
+          Passkey registrieren
+        </button>
+      </p>
+
     </div>
     {% endblock %}
+
     <footer>
-      <form id="myForm" action = "/logout" method = "post">
+      <form id="myForm" action="/logout" method="post">
         <input type="submit" name="login" class="login" value="Logout">
       </form>
+
       <div id="progress">
         <div id="bar"></div>
       </div>
     </footer>
   </div>
+
   <script src="/static/js/dashboard.js"></script>
 {% endblock %}

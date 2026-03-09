@@ -1,10 +1,34 @@
 // add evemt listener 
 document.addEventListener('click', function (e) {
+    if (e.target.id === "registerPasskeyBtn") {
+        registerPasskey();
+        return;
+    }
     if(e.target.href != undefined) {  // but add only to links, not to button!
         e.preventDefault();
     loadContent(e.target.href);
     }
 });
+
+// function to handle passkey registration flow
+async function registerPasskey() {
+
+    const response = await fetch("/passkey/register/begin", {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    });
+
+    const options = await response.json();
+
+    const credential = await navigator.credentials.create({
+        publicKey: options
+    });
+
+    console.log(credential);
+}
+
 
 var timeoutID = setTimeout(logout, 10500);
 
@@ -58,5 +82,6 @@ move(10)   // start progress bar with 10 sec
 function logout () {
     location.href = '/logout';
 }
+
 
 

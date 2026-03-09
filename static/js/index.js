@@ -39,3 +39,51 @@ function login () {
 }
 
 
+// helper function to convert base64url string to ArrayBuffer (required for passkey login)
+function base64urlToBuffer(base64url) {
+    const padding = "=".repeat((4 - base64url.length % 4) % 4);
+    const base64 = (base64url + padding)
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+
+    const raw = window.atob(base64);
+    const buffer = new Uint8Array(raw.length);
+
+    for (let i = 0; i < raw.length; i++) {
+        buffer[i] = raw.charCodeAt(i);
+    }
+
+    return buffer;
+}
+
+
+
+// function to handle passkey login flow
+async function passkeyLogin() {
+
+    // Server nach Login-Optionen für Passkey fragen
+    const response = await fetch("/passkey/login/begin", {
+        method: "POST"
+    });
+
+    // Challenge und Optionen vom Server erhalten
+    const options = await response.json();
+
+    // Challenge von Base64 → ArrayBuffer
+    options.challenge = base64urlToBuffer(options.challenge);
+
+    // Passkey vom Authenticator anfordern
+    const credential = await navigator.credentials.get({
+        publicKey: options
+    });
+
+    // Antwort des Authenticators an den Server senden
+    await fetch("/passkey/login/finish", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(credential)
+    });
+
+    // Bei erfolgreicher Verifikation Weiterleitung
+    window.location = "/dashboard";
+}

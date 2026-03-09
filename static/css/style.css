@@ -74,6 +74,7 @@ h1 {
 }
 
 .login {
+  width: 100%;
   text-align: center;
   font-weight: 700;
   height: 36px;

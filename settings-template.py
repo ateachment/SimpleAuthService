@@ -19,4 +19,9 @@ GOOGLE_DISCOVERY_URL = ("https://accounts.google.com/.well-known/openid-configur
 
 EXPIRY_TIME_SECONDS = 60
 
+# Passkey-Login
+DOMAIN = "YourDomain" # set to your domain (e.g. example.com) or localhost for testing
+
 DEBUG_MODE = True     # disable DEBUG_MODE in productive environment
+
+
