@@ -13,6 +13,7 @@ from io import BytesIO
 import base64 
 import datetime as dt
 from datetime import timezone, timedelta
+import time
 import db
 # library for verifying passkey registration and login responses, passkey login and registration 
 from webauthn import verify_registration_response, verify_authentication_response 
@@ -361,33 +362,41 @@ def loginUser2():
 @app.route('/passkey/login/begin', methods=['POST'])
 def passkey_login_begin():
 
-    # Challenge erzeugen
-    challenge_bytes = os.urandom(32)
-    challenge = base64.urlsafe_b64encode(challenge_bytes).decode().rstrip("=")
+    try:
+        # Challenge erzeugen
+        challenge_bytes = os.urandom(32)
 
-    # im Arbeitsspeicher speichern
-    passkey_challenges[challenge] = {
-        "challenge": challenge_bytes,
-        "created": dt.time()
-    }
+        challenge = base64.urlsafe_b64encode(
+            challenge_bytes
+        ).decode().rstrip("=")
 
-    # Optionen für Passkey-Login zurückgeben
-    options = {
-        "challenge": challenge,
-        "timeout": 60000,
-        "rpId": settings.DOMAIN,  # rpId = relying party identifier, the website for which the authentication is valid
-        "userVerification": "preferred",  # "required", "preferred" or "discouraged" - if "required" -> authentication only with passkey, if "preferred" -> authentication with passkey if available, otherwise fallback to other authentication methods (e.g. username/password), if "discouraged" -> authentication with passkey is possible but not recommended
-        "allowCredentials": []    # list of allowed credentials, can be used to specify that only certain passkeys are allowed for authentication - left empty in this example to allow any passkey of the user
-    }
+        # im Arbeitsspeicher speichern
+        passkey_challenges[challenge] = {
+            "challenge": challenge_bytes,
+            "created": time.time()
+        }
 
-    return json.dumps(options), 200
+        # Optionen für Passkey-Login zurückgeben
+        options = {
+            "challenge": challenge,
+            "timeout": 60000,
+            "rpId": settings.DOMAIN,
+            "userVerification": "preferred",
+
+            # leer = discoverable credentials (Passkeys)
+            "allowCredentials": []
+        }
+
+        return json.dumps(options), 200
+
+    except Exception as e:
+        print("Error in passkey_login_begin:", str(e))
+        return {"status": "error"}, 500
 
 @app.route('/passkey/login/finish', methods=['POST'])
 def passkey_login_finish():
 
     data = request.json
-
-    credential = AuthenticationCredential.parse_raw(json.dumps(data))
 
     clientDataJSON = base64.urlsafe_b64decode(
         data["response"]["clientDataJSON"] + "=="
@@ -396,33 +405,40 @@ def passkey_login_finish():
     clientData = json.loads(clientDataJSON)
 
     challenge = clientData["challenge"]
+    challenge_bytes = base64.urlsafe_b64decode(challenge + "==")
+    credential_id = base64.urlsafe_b64decode(data["rawId"] + "==")
 
-    challenge_data = passkey_challenges.pop(challenge, None)
+    # challenge_data = passkey_challenges.pop(challenge, None)
+    print("client challenge:", challenge)
+    print("stored challenge:", challenge_bytes)
+    print("credential id:", credential_id)
+    
 
-    if not challenge_data:
-        return {"status": "error"}, 403
+    if not challenge_bytes:
+        print("Challenge data not found for challenge:", challenge)
+        return {"status":"error"},403
 
-
-    credential_id = data["id"]
 
     db1 = db.Db()
 
     query = "SELECT userID, publicKey, signCount FROM tblPasskey WHERE credentialID=%s"
     result = db1.execute(query, (credential_id,))
 
+    print("Query result:", result)
+
     if not result:
+        print("No passkey found for credential ID:", credential_id)
         del db1
         return {"status": "error"}, 403
 
     userId, publicKey, signCount = result[0]
 
-
     verification = verify_authentication_response(
-        credential=credential,
-        expected_challenge=challenge.encode(),
+        credential=data,
+        expected_challenge=challenge_bytes,
         expected_origin=settings.ORIGIN,
         expected_rp_id=settings.DOMAIN,
-        credential_public_key=base64.urlsafe_b64decode(publicKey + "=="),
+        credential_public_key=publicKey,
         credential_current_sign_count=signCount,
         require_user_verification=False
     )
@@ -483,6 +499,7 @@ def passkey_register_begin():
         challenge = base64.urlsafe_b64encode(challenge_bytes).decode().rstrip("=")
 
         passkey_challenges[challenge] = {
+            "challenge": challenge_bytes,
             "userId": userId,
             "created": dt.time()
         }
@@ -528,8 +545,6 @@ def passkey_register_finish():
 
         data = request.json
 
-        credential = RegistrationCredential.parse_raw(json.dumps(data))
-
         clientDataJSON = base64.urlsafe_b64decode(
             data["response"]["clientDataJSON"] + "=="
         )
@@ -541,26 +556,24 @@ def passkey_register_finish():
         challenge_data = passkey_challenges.pop(challenge, None)
 
         if not challenge_data:
+            print("Challenge data not found for challenge:", challenge)
             return {"status": "error", "message": "challenge invalid"}, 403
 
         if challenge_data["userId"] != userId:
+            print("User ID mismatch for challenge:", challenge)
             return {"status": "error", "message": "user mismatch"}, 403
 
         verification = verify_registration_response(
-            credential=credential,
-            expected_challenge=challenge.encode(),
+            credential=data,
+            expected_challenge=challenge_data["challenge"],
             expected_origin=settings.ORIGIN,
             expected_rp_id=settings.DOMAIN,
             require_user_verification=False
         )
 
-        credential_id = base64.urlsafe_b64encode(
-            verification.credential_id
-        ).decode().rstrip("=")
+        credential_id = verification.credential_id
 
-        public_key = base64.urlsafe_b64encode(
-            verification.credential_public_key
-        ).decode().rstrip("=")
+        public_key = verification.credential_public_key
 
         sign_count = verification.sign_count
 
@@ -571,6 +584,8 @@ def passkey_register_finish():
         VALUES (%s,%s,%s,%s)
         """
 
+        print("Inserting passkey into database:", userId, credential_id, public_key, sign_count)
+
         db1.execute(query, (userId, credential_id, public_key, sign_count))
         db1.commit()
 
@@ -579,10 +594,11 @@ def passkey_register_finish():
         return json.dumps({"status": "ok"}), 200
 
     except jwt.ExpiredSignatureError:
+        print("JWT expired for token:", token)
         return {"token": "-2"}, 403
 
     except Exception as e:
-        print(e)
+        print("Error during passkey registration finish:", str(e))
         return {"status": "error"}, 403
 
 

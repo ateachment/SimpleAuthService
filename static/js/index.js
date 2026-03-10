@@ -1,3 +1,5 @@
+// index.js
+
 var token = "-1";
 
 function login () {
@@ -56,34 +58,54 @@ function base64urlToBuffer(base64url) {
     return buffer;
 }
 
+function bufferToBase64url(buffer){
+
+    const bytes = new Uint8Array(buffer);
+    let str = "";
+
+    for (const b of bytes){
+        str += String.fromCharCode(b);
+    }
+
+    return btoa(str)
+        .replace(/\+/g,"-")
+        .replace(/\//g,"_")
+        .replace(/=/g,"");
+}
 
 
 // function to handle passkey login flow
-async function passkeyLogin() {
+async function loginPasskey(){
 
-    // Server nach Login-Optionen für Passkey fragen
-    const response = await fetch("/passkey/login/begin", {
-        method: "POST"
-    });
+    const begin = await fetch("/passkey/login/begin",{method:"POST"})
+    const options = await begin.json()
 
-    // Challenge und Optionen vom Server erhalten
-    const options = await response.json();
+    options.challenge = base64urlToBuffer(options.challenge)
 
-    // Challenge von Base64 → ArrayBuffer
-    options.challenge = base64urlToBuffer(options.challenge);
+    for (let cred of options.allowCredentials){
+        cred.id = base64urlToBuffer(cred.id)
+    }
 
-    // Passkey vom Authenticator anfordern
-    const credential = await navigator.credentials.get({
+    const assertion = await navigator.credentials.get({
         publicKey: options
-    });
+    })
 
-    // Antwort des Authenticators an den Server senden
-    await fetch("/passkey/login/finish", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(credential)
-    });
+    const data = {
+        id: assertion.id,
+        rawId: bufferToBase64url(assertion.rawId),
+        type: assertion.type,
+        response: {
+            clientDataJSON: bufferToBase64url(assertion.response.clientDataJSON),
+            authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
+            signature: bufferToBase64url(assertion.response.signature)
+        }
+    }
 
-    // Bei erfolgreicher Verifikation Weiterleitung
-    window.location = "/dashboard";
+    await fetch("/passkey/login/finish",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(data)
+    })
+
+    location.href="/"
 }
