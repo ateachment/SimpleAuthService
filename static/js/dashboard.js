@@ -1,3 +1,5 @@
+// dashboard.js
+
 // add evemt listener 
 document.addEventListener('click', function (e) {
     if (e.target.id === "registerPasskeyBtn") {
@@ -22,11 +24,66 @@ async function registerPasskey() {
 
     const options = await response.json();
 
+    // WebAuthn benötigt Binary
+    options.challenge = base64urlToUint8Array(options.challenge);
+    options.user.id = base64urlToUint8Array(options.user.id);
+
     const credential = await navigator.credentials.create({
         publicKey: options
     });
 
-    console.log(credential);
+    const data = {
+        id: credential.id,
+        rawId: bufferToBase64url(credential.rawId),
+        type: credential.type,
+        response: {
+            clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+            attestationObject: bufferToBase64url(credential.response.attestationObject)
+        }
+    };
+
+    const finish = await fetch("/passkey/register/finish", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    });
+
+    const result = await finish.json();
+    console.log(result);
+}
+// helper functions to convert between base64url and ArrayBuffer (required for passkey registration)
+function base64urlToUint8Array(base64url) {
+
+    const padding = "=".repeat((4 - base64url.length % 4) % 4);
+    const base64 = (base64url + padding)
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+
+    const raw = atob(base64);
+    const buffer = new Uint8Array(raw.length);
+
+    for (let i = 0; i < raw.length; ++i) {
+        buffer[i] = raw.charCodeAt(i);
+    }
+
+    return buffer;
+}
+// helper function to convert ArrayBuffer to base64url (required for passkey registration)
+function bufferToBase64url(buffer) {
+
+    const bytes = new Uint8Array(buffer);
+    let str = "";
+
+    for (const b of bytes) {
+        str += String.fromCharCode(b);
+    }
+
+    return btoa(str)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=/g, "");
 }
 
 

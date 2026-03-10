@@ -14,6 +14,11 @@ import base64
 import datetime as dt
 from datetime import timezone, timedelta
 import db
+# library for verifying passkey registration and login responses, passkey login and registration 
+from webauthn import verify_registration_response, verify_authentication_response 
+# data structures for passkey registration and login responses
+from webauthn.helpers.structs import RegistrationCredential, AuthenticationCredential 
+
 import settings
 # make cross-origin AJAX possible because of using swagger editor
 # https://flask-cors.readthedocs.io/en/latest/#using-json-with-cors
@@ -361,7 +366,10 @@ def passkey_login_begin():
     challenge = base64.urlsafe_b64encode(challenge_bytes).decode().rstrip("=")
 
     # im Arbeitsspeicher speichern
-    passkey_challenges[challenge] = dt.time()
+    passkey_challenges[challenge] = {
+        "challenge": challenge_bytes,
+        "created": dt.time()
+    }
 
     # Optionen für Passkey-Login zurückgeben
     options = {
@@ -374,6 +382,82 @@ def passkey_login_begin():
 
     return json.dumps(options), 200
 
+@app.route('/passkey/login/finish', methods=['POST'])
+def passkey_login_finish():
+
+    data = request.json
+
+    credential = AuthenticationCredential.parse_raw(json.dumps(data))
+
+    clientDataJSON = base64.urlsafe_b64decode(
+        data["response"]["clientDataJSON"] + "=="
+    )
+
+    clientData = json.loads(clientDataJSON)
+
+    challenge = clientData["challenge"]
+
+    challenge_data = passkey_challenges.pop(challenge, None)
+
+    if not challenge_data:
+        return {"status": "error"}, 403
+
+
+    credential_id = data["id"]
+
+    db1 = db.Db()
+
+    query = "SELECT userID, publicKey, signCount FROM tblPasskey WHERE credentialID=%s"
+    result = db1.execute(query, (credential_id,))
+
+    if not result:
+        del db1
+        return {"status": "error"}, 403
+
+    userId, publicKey, signCount = result[0]
+
+
+    verification = verify_authentication_response(
+        credential=credential,
+        expected_challenge=challenge.encode(),
+        expected_origin=settings.ORIGIN,
+        expected_rp_id=settings.DOMAIN,
+        credential_public_key=base64.urlsafe_b64decode(publicKey + "=="),
+        credential_current_sign_count=signCount,
+        require_user_verification=False
+    )
+
+    new_sign_count = verification.new_sign_count
+
+    query = "UPDATE tblPasskey SET signCount=%s WHERE credentialID=%s"
+    db1.execute(query, (new_sign_count, credential_id))
+    db1.commit()
+
+
+    # Rollen laden
+    query = "SELECT roleID FROM tblRoleUser WHERE userID=%s"
+    result = db1.execute(query, (userId,))
+
+    roleIDs = [row[0] for row in result]
+
+    del db1
+
+
+    expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=settings.EXPIRY_TIME_SECONDS)
+
+    token = jwt.encode({
+        "userID": userId,
+        "exp": expiry,
+        "roleIDs": roleIDs
+    }, private_key, algorithm="RS256")
+
+
+    resp = make_response(json.dumps({"status": "ok"}))
+    resp.set_cookie('token', token, httponly=True, secure=True)
+
+    return resp
+
+# routes for passkey registration
 @app.route("/passkey/register/begin", methods=["POST"])
 def passkey_register_begin():
 
@@ -433,26 +517,75 @@ def passkey_register_begin():
     except Exception as e:
         return {"token": "-1"}, 403
 
-
-
 @app.route("/passkey/register/finish", methods=["POST"])
 def passkey_register_finish():
 
-    data = request.json
+    token = request.cookies.get('token')
 
-    credential_id = data["id"]
+    try:
+        decoded_token = decodeJWT(encoded_token=token)
+        userId = decoded_token.get("userID")
 
-    # später dekodieren wir:
-    # publicKey
-    # signCount
+        data = request.json
 
-    db.execute("""
-        INSERT INTO tblPasskey
-        (credentialID, userID, publicKey, signCount)
-        VALUES (?, ?, ?, 0)
-    """, (credential_id, current_user.id, "...publickey..."))
+        credential = RegistrationCredential.parse_raw(json.dumps(data))
 
-    return {"status": "ok"}
+        clientDataJSON = base64.urlsafe_b64decode(
+            data["response"]["clientDataJSON"] + "=="
+        )
+
+        clientData = json.loads(clientDataJSON)
+
+        challenge = clientData.get("challenge")
+
+        challenge_data = passkey_challenges.pop(challenge, None)
+
+        if not challenge_data:
+            return {"status": "error", "message": "challenge invalid"}, 403
+
+        if challenge_data["userId"] != userId:
+            return {"status": "error", "message": "user mismatch"}, 403
+
+        verification = verify_registration_response(
+            credential=credential,
+            expected_challenge=challenge.encode(),
+            expected_origin=settings.ORIGIN,
+            expected_rp_id=settings.DOMAIN,
+            require_user_verification=False
+        )
+
+        credential_id = base64.urlsafe_b64encode(
+            verification.credential_id
+        ).decode().rstrip("=")
+
+        public_key = base64.urlsafe_b64encode(
+            verification.credential_public_key
+        ).decode().rstrip("=")
+
+        sign_count = verification.sign_count
+
+        db1 = db.Db()
+
+        query = """
+        INSERT INTO tblPasskey (userID, credentialID, publicKey, signCount)
+        VALUES (%s,%s,%s,%s)
+        """
+
+        db1.execute(query, (userId, credential_id, public_key, sign_count))
+        db1.commit()
+
+        del db1
+
+        return json.dumps({"status": "ok"}), 200
+
+    except jwt.ExpiredSignatureError:
+        return {"token": "-2"}, 403
+
+    except Exception as e:
+        print(e)
+        return {"status": "error"}, 403
+
+
 
            
 @app.route('/auth/user/<token>', methods=['PUT'])
