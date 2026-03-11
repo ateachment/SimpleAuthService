@@ -307,7 +307,6 @@ def loginUser1():
 
 @app.route('/auth/user/login2', methods=['POST'])                    # check 2fa totp
 def loginUser2():
-    print("loginUser2 called")
     content_type = request.headers.get('Content-Type')
     if content_type == 'application/json':
         totpCode = request.json['totpCode']
@@ -332,7 +331,6 @@ def loginUser2():
                 query = f"UPDATE tblUser SET totpActivated = TRUE WHERE userID = %s" 
                 result = db1.execute(query, (userId,))
                 db1.commit()
-                print("2fa successful")
                 query2 = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE tblUser.userID=%s" 
                 result2 = db1.execute(query2, (userId,))
                 del db1                                             # close db connection
@@ -343,7 +341,6 @@ def loginUser2():
                     # create jwt
                     expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=settings.EXPIRY_TIME_SECONDS) # Expiration 10 seconds in the future     
                     token = jwt.encode({"userID": userId, "exp": expiry, "roleIDs": roleIDs }, private_key, algorithm="RS256") 
-                    print(token)
                     return json.dumps({ "token": token}), 200       # 200 OK
             else:
                 del db1                                             # close db connection       
@@ -476,12 +473,12 @@ def passkey_login_finish():
 # routes for passkey registration
 @app.route("/passkey/register/begin", methods=["POST"])
 def passkey_register_begin():
-
+    print("passkey_register_begin called")
     token = request.cookies.get('token')
 
     try:
         decoded_token = decodeJWT(encoded_token=token)
-        print(decoded_token)
+        print("Decoded token:", decoded_token)
         userId = decoded_token.get("userID")
 
         db1 = db.Db()
@@ -492,7 +489,7 @@ def passkey_register_begin():
             return {"token": "-1"}, 403
 
         username = result[0][0]
-        print(username)
+        print("Username for userID", userId, "is", username)
 
 
         challenge_bytes = os.urandom(32)
@@ -525,7 +522,7 @@ def passkey_register_begin():
             "timeout": 60000,
             "attestation": "none"
         }
-        print(options)
+        print("Passkey registration options:", options)
         return options
 
     except jwt.ExpiredSignatureError:
@@ -536,7 +533,7 @@ def passkey_register_begin():
 
 @app.route("/passkey/register/finish", methods=["POST"])
 def passkey_register_finish():
-
+    print("passkey_register_finish called")
     token = request.cookies.get('token')
 
     try:
