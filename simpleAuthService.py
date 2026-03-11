@@ -66,6 +66,8 @@ def standard_get_response(page):
         return render_template('login.html', message = "Please login.")
     elif token == "-2":                                                     # expired
         return render_template('login.html', message = "Your session has expired. Please login again.")
+    elif token == "-3":                                                     # no 2fa
+        return render_template('login.html', message = "Please complete 2FA verification.")
     else:                                                                   # validated and updated -> Dashboard
         return standard_response(page, token)
 
@@ -87,6 +89,8 @@ def index():
         return render_template('login.html', message = "Please login.")
     elif token == "-2":                                                     # expired
         return render_template('login.html', message = "Your session has expired. Please login again.")
+    elif token == "-3":                                                     # no 2fa
+        return render_template('login.html', message = "Please complete 2FA verification.")
     else:                                                                   # validated and updated -> Dashboard
         return standard_response("dashboard.html", token)
 
@@ -177,13 +181,13 @@ def callback():
 
 @app.route('/activateTotp', methods=['POST'])
 def activateTotp():
-    jsonResponse = json.loads(loginUser2()[0])                  # loginUser2 returns i.e. ('{"token": jwt}', 200) 
+    # loginUser2 returns i.e. jwt (decoded)  ('{"token": {"exp": 1773259989, "roleIDs": [1, 2]}}', 200) 
+    jsonResponse = json.loads(loginUser2()[0])     
     if jsonResponse['token'] == '-1':                           # authentification failed -> login form 
         return render_template('login.html', message = "Wrong authentification code.")          
     else:
-        resp = make_response(render_template('dashboard.html'))
-        resp.set_cookie('token', jsonResponse['token'], httponly=True, secure=True)
-        return resp
+        return standard_response("dashboard.html",token=jsonResponse['token'])   # 2fa successful -> load dashboard                      
+
 
 @app.route('/dashboard', methods=['POST', 'GET'])   
 def dashboard():
@@ -191,7 +195,8 @@ def dashboard():
         factor = request.form['factor']
 
         if factor == "1_factor":
-            jsonResponse = json.loads(loginUser1()[0])                      # loginUser returns i.e. ('{"token": jwt, ...}', 200)
+            # loginUser1 returns i.e. jwt (decoded)  ('{"token": {"exp": 1773259989, "userID": 1}}', 200) 
+            jsonResponse = json.loads(loginUser1()[0])
             if jsonResponse['token'] == '-1':                               # authentification failed -> login form 
                 return render_template('login.html', message = "Wrong username/password.")                     
             else:                                 
@@ -218,7 +223,8 @@ def dashboard():
                     return resp                                             # load check totp form
         
         if factor == "2_factor":
-            jsonResponse = json.loads(loginUser2()[0])                      # loginUser2 returns i.e. ('{"token": jwt}', 200)
+            # loginUser2 returns i.e. jwt (decoded)  ('{"token": {"exp": 1773259989, "roleIDs": [1, 2]}}', 200) 
+            jsonResponse = json.loads(loginUser2()[0])
             if jsonResponse['token'] == '-1':                               # 2fa failed -> login form 
                 return render_template('login.html', message = "Wrong authentification code.")                     
             else:                                 
@@ -608,6 +614,9 @@ def validate_and_update_token(token):
         if blocked == None:
             decoded_token = decodeJWT(encoded_token=token)
             roleIDs = decoded_token.get("roleIDs")
+
+            if roleIDs == None:                                 # token does not contain roleIDs -> no 2fa -> not allowed to access dashboard
+                return "{ \"token\": \"-3\" }", 403             # 403 forbidden
 
             expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=settings.EXPIRY_TIME_SECONDS) # Expiration 10 seconds in the future     
             token = jwt.encode({"userID": decoded_token.get("userID"), "exp": expiry, "roleIDs": roleIDs }, private_key, algorithm="RS256")
