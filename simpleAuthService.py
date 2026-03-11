@@ -208,7 +208,7 @@ def dashboard():
             if jsonResponse['token'] == '-1':                               # 2fa failed -> login form 
                 return render_template('login.html', message = "Wrong authentification code.")                     
             else:                                 
-                return standard_get_response("dashboard.html")                              
+                return standard_response("dashboard.html",token=jsonResponse['token'])   # 2fa successful -> load dashboard                      
                                        
 
     if request.method == 'GET':                                             # links or redirected by login.html (already logged on)
@@ -263,32 +263,24 @@ def loginUser1():
                     
                     userId = row[0]                                 # get userId and then roleIDs
                     totpActivated = row[2]                          # false = 0, true = 1
-                    query2 = "SELECT tblRole.roleID FROM tblRole INNER JOIN tblRoleUser ON tblRole.roleID = tblRoleUser.roleID INNER JOIN tblUser ON tblRoleUser.userID = tblUser.userID WHERE tblUser.userID=%s" 
-                    result2 = db1.execute(query2, (userId,))
-                    if(result2):
-                        roleIDs = []
-                        for row2 in result2:
-                            roleIDs.append(row2[0])        
 
-                        # create jwt
-                        expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=settings.EXPIRY_TIME_SECONDS) # Expiration 10 seconds in the future     
-                        token = jwt.encode({"exp": expiry, "userId": userId, "roleIDs": roleIDs }, private_key, algorithm="RS256") 
-                        if totpActivated == 0:
-                            # create url to qrcode and totp code
-                            totpKey = pyotp.random_base32()                 # randomly generated key
-                            if settings.DEBUG_MODE:
-                                totpKey="CautionDebugModeTrueKeyIsNotGood"  # static key only for testing purposes
-                            uri = pyotp.totp.TOTP(totpKey).provisioning_uri(name=username, issuer_name='SimpleAuthService')
-                            query = f"UPDATE tblUser SET totpKey = %s WHERE userID = %s" 
-                            result = db1.execute(query, (totpKey, userId))
-                            db1.commit()
-                            del db1                                         # falclose db connection
-                            return json.dumps({ "token": token, "totpActivated": totpActivated, "uri": uri}), 200  # 200 OK
-                        else:
-                            del db1
-                            return json.dumps({ "token": token, "totpActivated": totpActivated}), 200  # 200 OK
+                    # create jwt
+                    expiry = dt.datetime.now(tz=timezone.utc) + dt.timedelta(seconds=settings.EXPIRY_TIME_SECONDS) # Expiration 10 seconds in the future     
+                    token = jwt.encode({"exp": expiry, "userId": userId }, private_key, algorithm="RS256") 
+                    if totpActivated == 0:
+                        # create url to qrcode and totp code
+                        totpKey = pyotp.random_base32()                 # randomly generated key
+                        if settings.DEBUG_MODE:
+                            totpKey="CautionDebugModeTrueKeyIsNotGood"  # static key only for testing purposes
+                        uri = pyotp.totp.TOTP(totpKey).provisioning_uri(name=username, issuer_name='SimpleAuthService')
+                        query = f"UPDATE tblUser SET totpKey = %s WHERE userID = %s" 
+                        result = db1.execute(query, (totpKey, userId))
+                        db1.commit()
+                        del db1                                     # close db connection                                        # falclose db connection
+                        return json.dumps({ "token": token, "totpActivated": totpActivated, "uri": uri}), 200  # 200 OK
                     else:
-                        del db1                                     # close db connection
+                        del db1
+                        return json.dumps({ "token": token, "totpActivated": totpActivated}), 200  # 200 OK
             except:                                                 # verification of password an hash failed
                 pass
         return json.dumps({ "token": "-1" }), 403                   # 403 forbidden - wrong password
