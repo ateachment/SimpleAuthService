@@ -653,5 +653,6 @@ def cleanUp_blocked_token_list():
     return json.dumps({ "cleanedUp": len(jwts_to_clear) }), 200     # return number of cleaned tokens for testing purposes
 
 if __name__ == '__main__':
-    app.run("localhost",ssl_context="adhoc")   #  run using https to ensure an encrypted connection with Google (pip install pyOpenSSL)
+    app.run("localhost",ssl_context="adhoc") # run using https to ensure an encrypted connection with Google (pip install pyOpenSSL)
+                                             # for Passkey support localhost is needed instead of 127.0.0.1
     
