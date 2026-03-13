@@ -42,9 +42,9 @@ INSERT INTO tblRoleUser (userID, roleID) VALUES (1, 2);  -- Viewer
 
 -- Passkey Authentication - more than one passkey per user for different devices needed.
 CREATE TABLE tblpasskey (
-  credentialID VARBINARY(255) NOT NULL,
+  credentialID VARBINARY(255) NOT NULL,  -- short binary identifier for the passkey credential, unique for each passkey
   userID INT NOT NULL,
-  publicKey BLOB NOT NULL,
+  publicKey BLOB NOT NULL,  -- larger binary data structure (COSE key)
   signCount INT DEFAULT 0,  -- to prevent replay attacks by tracking the number of times a passkey has been used
   created DATETIME DEFAULT current_timestamp(),
   PRIMARY KEY (credentialID)
